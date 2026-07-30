@@ -19,11 +19,12 @@ import { LoadProgressionProjectionWidget } from '../components/trainer/LoadProgr
 import { ComparativeLoadProgressionChart } from '../components/trainer/ComparativeLoadProgressionChart';
 import { AISubstitutionAssistantModal } from '../components/trainer/AISubstitutionAssistantModal';
 import { BodyCompositionIntegrationWidget } from '../components/trainer/BodyCompositionIntegrationWidget';
+import { StudentInviteModal } from '../components/trainer/StudentInviteModal';
 import { ProgramExercise } from '../../domain/types';
 import { calculateWeekStats, calculatePersonalRecords } from '../../domain/calculators/loadCalculators';
 import { calculateStudentClassStats } from '../../domain/calculators/classStatsCalculator';
 import { MOVEMENT_PATTERN_LABELS } from '../../data/exerciseCatalog';
-import { Maximize2, Minimize2, Target, Sparkles, Activity, X, Calendar, List, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Clock, Plus, Trash2, Check } from 'lucide-react';
+import { Maximize2, Minimize2, Target, Sparkles, Activity, X, Calendar, List, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Clock, Plus, Trash2, Check, Share2 } from 'lucide-react';
 
 export interface ClientDetailViewProps {
   client: Client;
@@ -68,6 +69,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [promptNotes, setPromptNotes] = useState('');
   const [mesoWeeksInput, setMesoWeeksInput] = useState(4);
   const [showMesoModal, setShowMesoModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showMethodsGuide, setShowMethodsGuide] = useState(false);
   const [trainerMsg, setTrainerMsg] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -277,6 +279,16 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowInviteModal(true)}
+            className="bg-gradient-to-r from-[#00f0ff] to-[#3b82f6] text-[#080b11] font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#00f0ff]/20"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Gerar Convite 📲</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -1242,6 +1254,13 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         clientLevel={client.level}
         periodizationPhase={client.program?.meso?.weeks?.[0]?.f || 'Base'}
         goal={client.goal}
+      />
+
+      {/* Student Invite Modal */}
+      <StudentInviteModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        client={client}
       />
     </div>
   );

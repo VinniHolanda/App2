@@ -13,6 +13,7 @@ import { GeminiChatbot } from './presentation/components/ai/GeminiChatbot';
 import { PwaInstallBanner } from './presentation/components/pwa/PwaInstallBanner';
 import { useAuth } from './presentation/context/AuthContext';
 import { AuthModal } from './presentation/components/auth/AuthModal';
+import { WelcomeRoleModal } from './presentation/components/auth/WelcomeRoleModal';
 import { BrandProvider, useBrand } from './presentation/context/BrandContext';
 
 function MainAppContent() {
@@ -22,6 +23,22 @@ function MainAppContent() {
   const [appRole, setAppRole] = useState<'trainer' | 'student'>('trainer');
   const [showArchDocModal, setShowArchDocModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+  // Check URL params for invite link or open initial role selector
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteId = params.get('studentId') || params.get('invite');
+    if (inviteId) {
+      setAppRole('student');
+      localStorage.setItem('fitconnect_student_id', inviteId);
+    } else {
+      const hasSeenWelcome = localStorage.getItem('fitconnect_welcome_seen');
+      if (!hasSeenWelcome) {
+        setShowWelcomeModal(true);
+      }
+    }
+  }, []);
 
   // Sync appRole with userProfile role if available
   useEffect(() => {
@@ -30,8 +47,12 @@ function MainAppContent() {
     }
   }, [userProfile]);
 
-  const handleRoleSwitch = (newRole: 'trainer' | 'student') => {
+  const handleRoleSwitch = (newRole: 'trainer' | 'student', studentId?: string) => {
     setAppRole(newRole);
+    if (studentId) {
+      localStorage.setItem('fitconnect_student_id', studentId);
+    }
+    localStorage.setItem('fitconnect_welcome_seen', 'true');
     if (currentUser) {
       setProfileRole(newRole);
     }
@@ -103,7 +124,7 @@ function MainAppContent() {
           </Button>
 
           {/* Mode Switcher */}
-          <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs">
+          <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
             <button
               onClick={() => handleRoleSwitch('trainer')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
@@ -129,6 +150,13 @@ function MainAppContent() {
               }}
             >
               Portal Aluno
+            </button>
+            <button
+              onClick={() => setShowWelcomeModal(true)}
+              title="Trocar perfil ou modo de login"
+              className="px-2 py-1.5 text-[#64748b] hover:text-[#00f0ff] transition-colors"
+            >
+              <Users className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -385,6 +413,12 @@ function MainAppContent() {
       </main>
 
       {/* Architecture Analysis & Structure Modal */}
+      <WelcomeRoleModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        onSelectRole={(role, studentId) => handleRoleSwitch(role, studentId)}
+      />
+
       <Modal
         isOpen={showArchDocModal}
         onClose={() => setShowArchDocModal(false)}
