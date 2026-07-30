@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents an authenticated trainer or student account",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "studentClientId": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Represents an athlete or student profile including fitness history, workout program, and execution logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "whats": { "type": "string" },
+        "birth": { "type": "string" },
+        "gender": { "type": "string" },
+        "tipo": { "type": "string" },
+        "height": { "type": "string" },
+        "weight": { "type": "string" },
+        "goal": { "type": "string" },
+        "level": { "type": "string" },
+        "days": { "type": "string" },
+        "dur": { "type": "string" },
+        "eq": { "type": "string" },
+        "experience": { "type": "string" },
+        "parq": { "type": "object" },
+        "diseases": { "type": "array" },
+        "meds": { "type": "string" },
+        "inj": { "type": "string" },
+        "notes": { "type": "string" },
+        "portal": { "type": "object" },
+        "program": { "type": "object" },
+        "programHistory": { "type": "array" },
+        "rpeLog": { "type": "array" },
+        "trainerChat": { "type": "array" },
+        "agenda": { "type": "array" }
+      },
+      "required": ["id", "name"]
+    },
+    "CustomExercise": {
+      "title": "CustomExercise",
+      "description": "Custom exercise defined by the trainer in the exercise library",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "pattern": { "type": "string" },
+        "equipmentCategory": { "type": "string" },
+        "exerciseType": { "type": "string" },
+        "primaryMuscle": { "type": "string" },
+        "custom": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection storing authenticated trainer and student user profiles"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Collection containing all student profiles, prescribed workouts, and performance logs"
+    },
+    "/custom_exercises/{exerciseId}": {
+      "schema": "CustomExercise",
+      "description": "Collection storing trainer custom exercises"
+    }
+  }
+}

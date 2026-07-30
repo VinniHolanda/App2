@@ -1,0 +1,8 @@
+{
+  "name": "FitConnect",
+  "description": "Plataforma de inteligência esportiva, prescrição de treino, periodização e conexão entre treinadores e alunos.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "FitConnect — Prescrição & Treino Pro",
+  "short_name": "FitConnect",
+  "description": "Plataforma de inteligência esportiva, prescrição de treino, periodização e conexão entre treinadores e alunos.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#080b11",
+  "theme_color": "#080b11",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/src/assets/images/pwa_app_icon_1785182717324.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/images/pwa_app_icon_1785182717324.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "fitness", "health", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Portal do Aluno",
+      "short_name": "Aluno",
+      "description": "Acessar treino do dia e registrar séries",
+      "url": "/?role=student"
+    },
+    {
+      "name": "Painel do Treinador",
+      "short_name": "Treinador",
+      "description": "Gerenciar alunos e prescrever treinos",
+      "url": "/?role=trainer"
+    }
+  ]
+}
