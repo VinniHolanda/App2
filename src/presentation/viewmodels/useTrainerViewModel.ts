@@ -1,3 +1,4 @@
+import { auth } from '../../lib/firebase';
 import { useState, useEffect, useCallback } from 'react';
 import { Client, Program, Session, TrainingGoal, ClientLevel, EquipmentProfile, ClassBooking } from '../../domain/types';
 import { clientRepository } from '../../data/repositories/ClientRepository';
@@ -93,6 +94,7 @@ export function useTrainerViewModel() {
     const isNew = !clientData.id;
     const clientToSave: Client = {
       id: clientData.id || `client-${Date.now()}`,
+      trainerId: clientData.trainerId || auth.currentUser?.uid || '',
       name: clientData.name || 'Novo Aluno',
       email: clientData.email || '',
       whats: clientData.whats || '',
@@ -214,8 +216,25 @@ export function useTrainerViewModel() {
       await refreshClients();
       showToast("Novo treino prescrito com IA e salvo com sucesso!");
     } catch (err: any) {
-      console.error(err);
-      showToast(err.message || 'Erro ao comunicar com a IA');
+      console.warn("Falha ao gerar treino via IA, usando motor local como fallback:", err);
+      showToast("Falha na IA. Usando motor local de prescrição...");
+      
+      const newProg = generateProgram(client);
+      
+      if (client.program) {
+        if (!client.programHistory) client.programHistory = [];
+        client.programHistory.unshift({
+          program: JSON.parse(JSON.stringify(client.program)),
+          savedAt: new Date().toISOString(),
+          label: `${client.goal} — ${new Date().toLocaleDateString('pt-BR')} (Automático)`
+        });
+        client.programHistory = client.programHistory.slice(0, 5);
+      }
+      
+      client.program = newProg;
+      await clientRepository.saveClient(client);
+      await refreshClients();
+      showToast("Treino gerado com sucesso (Motor Local)!");
     }
   };
 

@@ -1,3 +1,5 @@
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStudentViewModel } from '../viewmodels/useStudentViewModel';
@@ -52,8 +54,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
           return;
         }
 
-        const { collection, query, where, getDocs } = await import('firebase/firestore');
-        const { db } = await import('../../lib/firebase');
         
         const q = query(collection(db, 'clients'), where('portal.email', '==', userEmail));
         const snap = await getDocs(q);

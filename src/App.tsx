@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTrainerViewModel } from './presentation/viewmodels/useTrainerViewModel';
-import { TrainerDashboardView } from './presentation/views/TrainerDashboardView';
-import { ClientDetailView } from './presentation/views/ClientDetailView';
-import { StudentPortalView } from './presentation/views/StudentPortalView';
-import { ExerciseLibraryView } from './presentation/views/ExerciseLibraryView';
-import { TrainerScheduleView } from './presentation/views/TrainerScheduleView';
-import { StudioBrandView } from './presentation/views/StudioBrandView';
+const TrainerDashboardView = React.lazy(() => import('./presentation/views/TrainerDashboardView').then(m => ({ default: m.TrainerDashboardView })));
+const ClientDetailView = React.lazy(() => import('./presentation/views/ClientDetailView').then(m => ({ default: m.ClientDetailView })));
+const StudentPortalView = React.lazy(() => import('./presentation/views/StudentPortalView').then(m => ({ default: m.StudentPortalView })));
+const ExerciseLibraryView = React.lazy(() => import('./presentation/views/ExerciseLibraryView').then(m => ({ default: m.ExerciseLibraryView })));
+const TrainerScheduleView = React.lazy(() => import('./presentation/views/TrainerScheduleView').then(m => ({ default: m.TrainerScheduleView })));
+const StudioBrandView = React.lazy(() => import('./presentation/views/StudioBrandView').then(m => ({ default: m.StudioBrandView })));
 import { Button, Modal, Badge } from './presentation/components/ui/Primitives';
 import { Layers, Activity, Dumbbell, ShieldCheck, Cpu, Layout, Sparkles, BookOpen, Users, LogIn, LogOut, Calendar, Palette, AlertTriangle, Trash2 } from 'lucide-react';
 import { GeminiChatbot } from './presentation/components/ai/GeminiChatbot';
@@ -112,41 +112,43 @@ function MainAppContent() {
           <PwaInstallBanner />
 
           {/* Mode Switcher */}
-          <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
-            <button
-              onClick={() => handleRoleSwitch('trainer')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                appRole === 'trainer'
-                  ? 'text-[#080b11] shadow-sm'
-                  : 'text-[#94a3b8] hover:text-[#f1f5f9]'
-              }`}
-              style={{
-                background: appRole === 'trainer' ? `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})` : undefined
-              }}
-            >
-              Treinador
-            </button>
-            <button
-              onClick={() => handleRoleSwitch('student')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                appRole === 'student'
-                  ? 'text-[#080b11] shadow-sm'
-                  : 'text-[#94a3b8] hover:text-[#f1f5f9]'
-              }`}
-              style={{
-                background: appRole === 'student' ? `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})` : undefined
-              }}
-            >
-              Portal Aluno
-            </button>
-            <button
-              onClick={() => setShowWelcomeModal(true)}
-              title="Trocar perfil ou modo de login"
-              className="px-2 py-1.5 text-[#64748b] hover:text-[#00f0ff] transition-colors"
-            >
-              <Users className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {!(currentUser || userProfile) && (
+            <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
+              <button
+                onClick={() => handleRoleSwitch('trainer')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                  appRole === 'trainer'
+                    ? 'text-[#080b11] shadow-sm'
+                    : 'text-[#94a3b8] hover:text-[#f1f5f9]'
+                }`}
+                style={{
+                  background: appRole === 'trainer' ? `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})` : undefined
+                }}
+              >
+                Treinador
+              </button>
+              <button
+                onClick={() => handleRoleSwitch('student')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                  appRole === 'student'
+                    ? 'text-[#080b11] shadow-sm'
+                    : 'text-[#94a3b8] hover:text-[#f1f5f9]'
+                }`}
+                style={{
+                  background: appRole === 'student' ? `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})` : undefined
+                }}
+              >
+                Portal Aluno
+              </button>
+              <button
+                onClick={() => setShowWelcomeModal(true)}
+                title="Trocar perfil ou modo de login"
+                className="px-2 py-1.5 text-[#64748b] hover:text-[#00f0ff] transition-colors"
+              >
+                <Users className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Firebase / User Authentication Widget */}
           {(currentUser || userProfile) ? (
@@ -207,7 +209,7 @@ function MainAppContent() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8"> <React.Suspense fallback={<div className="flex h-[50vh] items-center justify-center text-[#94a3b8] font-medium animate-pulse">Carregando interface...</div>}>
         {/* Trainer Navigation Sub-Bar */}
         {appRole === 'trainer' && (
           <div className="mb-6 flex items-center justify-between border-b border-[#1e293b] pb-3 overflow-x-auto">
@@ -399,7 +401,7 @@ function MainAppContent() {
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+      </React.Suspense></main>
 
       {/* Modal de Confirmação de Exclusão de Aluno */}
       <AnimatePresence>
