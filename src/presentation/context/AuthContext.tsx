@@ -67,15 +67,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return newProfile;
       }
     } catch (err) {
-      console.warn("Could not fetch user profile from Firestore, using fallback:", err);
-      const fallbackProfile: UserProfile = {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || 'Usuário',
-        role: defaultRole
-      };
-      setUserProfile(fallbackProfile);
-      return fallbackProfile;
+      console.warn("Could not fetch user profile from Firestore:", err);
+      throw err;
     }
   };
 
@@ -83,19 +76,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        await fetchUserProfile(user);
-      } else {
-        // Check for local stored user profile if no Firebase session
-        const storedLocal = localStorage.getItem('fitconnect_local_user');
-        if (storedLocal) {
-          try {
-            setUserProfile(JSON.parse(storedLocal));
-          } catch {
-            setUserProfile(null);
-          }
-        } else {
+        try {
+          await fetchUserProfile(user);
+        } catch (e) {
           setUserProfile(null);
         }
+      } else {
+        setUserProfile(null);
       }
       setLoading(false);
     });
@@ -104,77 +91,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signInWithGoogle = async (preferredRole: UserRole = 'trainer') => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        await fetchUserProfile(result.user, preferredRole);
-      }
-    } catch (error) {
-      console.warn("Google auth unavailable, creating local profile:", error);
-      const localProfile: UserProfile = {
-        uid: 'local_' + Date.now(),
-        email: 'treinador@fitconnect.com',
-        displayName: 'Treinador Kinetix',
-        role: preferredRole
-      };
-      localStorage.setItem('fitconnect_local_user', JSON.stringify(localProfile));
-      setUserProfile(localProfile);
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    if (result.user) {
+      await fetchUserProfile(result.user, preferredRole);
     }
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, pass);
-      if (result.user) {
-        await fetchUserProfile(result.user);
-      }
-    } catch (error) {
-      console.warn("Email login failed on Firebase Auth, initializing local session:", error);
-      const localProfile: UserProfile = {
-        uid: 'local_' + Date.now(),
-        email,
-        displayName: email.split('@')[0] || 'Treinador',
-        role: 'trainer'
-      };
-      localStorage.setItem('fitconnect_local_user', JSON.stringify(localProfile));
-      setUserProfile(localProfile);
+    const result = await signInWithEmailAndPassword(auth, email, pass);
+    if (result.user) {
+      await fetchUserProfile(result.user);
     }
   };
 
   const registerWithEmail = async (email: string, pass: string, name: string, role: UserRole) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, pass);
-      if (result.user) {
-        await updateProfile(result.user, { displayName: name });
-        
-        const userDocRef = doc(db, 'users', result.user.uid);
-        const newProfile: UserProfile = {
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: name,
-          role,
-          photoURL: null,
-          createdAt: serverTimestamp()
-        };
-        try {
-          await setDoc(userDocRef, newProfile, { merge: true });
-        } catch (e) {
-          console.warn("Firestore save failed, keeping in memory/local", e);
-        }
-        setUserProfile(newProfile);
-      }
-    } catch (error: any) {
-      console.warn("Firebase Auth registration unavailable or failed, creating local user session:", error);
-      // Fallback: create local user profile so trainer is never blocked!
-      const localProfile: UserProfile = {
-        uid: 'local_' + Date.now(),
-        email,
-        displayName: name || email.split('@')[0] || 'Treinador Kinetix',
-        role
+    const result = await createUserWithEmailAndPassword(auth, email, pass);
+    if (result.user) {
+      await updateProfile(result.user, { displayName: name });
+      
+      const userDocRef = doc(db, 'users', result.user.uid);
+      const newProfile: UserProfile = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: name,
+        role,
+        photoURL: null,
+        createdAt: serverTimestamp()
       };
-      localStorage.setItem('fitconnect_local_user', JSON.stringify(localProfile));
-      setUserProfile(localProfile);
+      await setDoc(userDocRef, newProfile, { merge: true });
+      setUserProfile(newProfile);
     }
   };
 
@@ -184,7 +130,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.warn("Firebase logout error:", error);
     }
-    localStorage.removeItem('fitconnect_local_user');
     setUserProfile(null);
   };
 

@@ -1,24 +1,125 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /clients/{clientId} {
-      allow read, write: if request.auth != null || true;
-    }
-
-    match /custom_exercises/{exerciseId} {
-      allow read, write: if request.auth != null || true;
-    }
-
-    match /test/{document=**} {
-      allow read, write: if true;
-    }
-
+    
     match /{document=**} {
       allow read, write: if false;
     }
+
+    function isSignedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUser(data) {
+      return data.keys().hasAny(['uid'])
+        && data.uid is string && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && (!data.keys().hasAny(['email']) || (data.email is string && data.email.size() <= 256))
+        && (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 100))
+        && (!data.keys().hasAny(['role']) || (data.role is string && (data.role == 'trainer' || data.role == 'student')))
+        && (!data.keys().hasAny(['studentClientId']) || (data.studentClientId is string && data.studentClientId.size() <= 128))
+        && (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 2048))
+        && (!data.keys().hasAny(['createdAt']));
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['id', 'trainerId', 'name'])
+        && data.id is string && data.id.size() <= 128
+        && data.trainerId is string && data.trainerId.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && (!data.keys().hasAny(['email']) || (data.email is string && data.email.size() <= 256))
+        && (!data.keys().hasAny(['notes']) || (data.notes is string && data.notes.size() <= 2000));
+    }
+
+    function isValidCustomExercise(data) {
+      return data.keys().hasAll(['id', 'trainerId', 'name'])
+        && data.id is string && data.id.size() <= 128
+        && data.trainerId is string && data.trainerId.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && (!data.keys().hasAny(['pattern']) || (data.pattern is string && data.pattern.size() <= 100));
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+
+      allow create: if isSignedIn() 
+        && isValidId(userId) 
+        && userId == request.auth.uid 
+        && isValidUser(incoming())
+        && incoming().keys().hasOnly(['uid', 'email', 'displayName', 'role', 'studentClientId', 'photoURL', 'createdAt']);
+
+      allow update: if isSignedIn() 
+        && isValidId(userId) 
+        && userId == request.auth.uid 
+        && isValidUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'role', 'studentClientId', 'photoURL']);
+    }
+
+    match /clients/{clientId} {
+      allow get: if isSignedIn() && isValidId(clientId) && (
+        existing().trainerId == request.auth.uid 
+        || existing().get('portal', {}).get('email', '') == request.auth.token.email
+        || existing().get('email', '') == request.auth.token.email
+      );
+
+      allow list: if isSignedIn() && (
+        existing().trainerId == request.auth.uid
+        || existing().get('portal', {}).get('email', '') == request.auth.token.email
+        || existing().get('email', '') == request.auth.token.email
+      );
+
+      allow create: if isSignedIn() 
+        && isValidId(clientId)
+        && isValidClient(incoming())
+        && incoming().trainerId == request.auth.uid
+        && incoming().keys().hasOnly(['id', 'trainerId', 'name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings']);
+
+      allow update: if isSignedIn() 
+        && isValidId(clientId)
+        && isValidClient(incoming())
+        && incoming().id == existing().id
+        && incoming().trainerId == existing().trainerId
+        && (
+          (
+            existing().trainerId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings'])
+          )
+          ||
+          (
+            (existing().get('portal', {}).get('email', '') == request.auth.token.email || existing().get('email', '') == request.auth.token.email)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['rpeLog', 'updatedAt', 'trainerChat', 'agenda', 'portal'])
+          )
+        );
+
+      allow delete: if isSignedIn() 
+        && isValidId(clientId)
+        && existing().trainerId == request.auth.uid;
+    }
+
+    match /custom_exercises/{exerciseId} {
+      allow get: if isSignedIn() && isValidId(exerciseId) && existing().trainerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().trainerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isValidId(exerciseId)
+        && isValidCustomExercise(incoming())
+        && incoming().trainerId == request.auth.uid
+        && incoming().keys().hasOnly(['id', 'trainerId', 'name', 'pattern', 'equipmentCategory', 'exerciseType', 'primaryMuscle', 'custom', 'updatedAt', 'secondaryMuscles', 'specificMuscles', 'difficulty', 'biomechanicsTips', 'commonErrors', 'defaultSetsReps', 'eqs']);
+
+      allow update: if isSignedIn()
+        && isValidId(exerciseId)
+        && isValidCustomExercise(incoming())
+        && existing().trainerId == request.auth.uid
+        && incoming().trainerId == existing().trainerId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'pattern', 'equipmentCategory', 'exerciseType', 'primaryMuscle', 'custom', 'updatedAt', 'secondaryMuscles', 'specificMuscles', 'difficulty', 'biomechanicsTips', 'commonErrors', 'defaultSetsReps', 'eqs']);
+
+      allow delete: if isSignedIn()
+        && isValidId(exerciseId)
+        && existing().trainerId == request.auth.uid;
+    }
+
   }
 }

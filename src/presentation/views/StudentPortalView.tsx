@@ -27,7 +27,7 @@ export interface StudentPortalViewProps {
 }
 
 export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: initialClientId, onBackToTrainer }) => {
-  const { currentUser, userProfile, signInWithGoogle, linkStudentAccount } = useAuth();
+  const { currentUser, userProfile, signInWithGoogle, linkStudentAccount, loginWithEmail, registerWithEmail } = useAuth();
   const [activeStudentId, setActiveStudentId] = useState<string | null>(() => {
     return initialClientId || localStorage.getItem('fitconnect_student_id') || null;
   });
@@ -40,24 +40,46 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    clientRepository.getClients().then(clients => {
-      setAllClients(clients);
+    // If we have a user from Firebase Auth, attempt to find their linked client record
+    const fetchMatchedClient = async () => {
+      if (!currentUser?.email) return;
       
-      // Auto-match student profile if logged into Firebase Auth
-      if (currentUser?.email) {
+      try {
         const userEmail = currentUser.email.toLowerCase();
-        const matched = clients.find(c => 
-          c.email?.toLowerCase() === userEmail || 
-          c.portal?.email?.toLowerCase() === userEmail
-        );
-        if (matched) {
+        if (userProfile?.studentClientId) {
+          setActiveStudentId(userProfile.studentClientId);
+          localStorage.setItem('fitconnect_student_id', userProfile.studentClientId);
+          return;
+        }
+
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const { db } = await import('../../lib/firebase');
+        
+        const q = query(collection(db, 'clients'), where('portal.email', '==', userEmail));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+          const matched = snap.docs[0].data() as Client;
           setActiveStudentId(matched.id);
           localStorage.setItem('fitconnect_student_id', matched.id);
           linkStudentAccount(matched.id);
+        } else {
+          const q2 = query(collection(db, 'clients'), where('email', '==', userEmail));
+          const snap2 = await getDocs(q2);
+          if (!snap2.empty) {
+             const matched = snap2.docs[0].data() as Client;
+             setActiveStudentId(matched.id);
+             localStorage.setItem('fitconnect_student_id', matched.id);
+             linkStudentAccount(matched.id);
+          }
         }
+      } catch (err) {
+        console.warn("Error auto-matching student profile:", err);
       }
-    });
-  }, [currentUser]);
+    };
+    
+    fetchMatchedClient();
+  }, [currentUser, userProfile]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,22 +87,26 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
     setIsLoggingIn(true);
 
     try {
-      if (clientRepository.authenticateStudent) {
-        const student = await clientRepository.authenticateStudent(loginEmail, loginPass);
-        if (student) {
-          if (student.portal?.enabled === false) {
-            setLoginError('O acesso ao portal para este aluno está temporariamente bloqueado pelo treinador.');
-            return;
-          }
-          setActiveStudentId(student.id);
-          localStorage.setItem('fitconnect_student_id', student.id);
-          setIsLoggingIn(false);
-          return;
-        }
+      await loginWithEmail(loginEmail, loginPass);
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        setLoginError('E-mail ou senha incorretos. Caso seja seu primeiro acesso, crie uma conta.');
+      } else {
+        setLoginError('Erro ao realizar login. Tente novamente.');
       }
-      setLoginError('E-mail ou senha incorretos. Verifique os dados fornecidos pelo seu treinador.');
-    } catch (err) {
-      setLoginError('Erro ao realizar login. Tente novamente.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setIsLoggingIn(true);
+    try {
+      await registerWithEmail(loginEmail, loginPass, loginEmail.split('@')[0], 'student');
+    } catch (err: any) {
+      setLoginError('Erro ao criar conta. Talvez este e-mail já esteja em uso ou a senha seja fraca (min 6 caracteres).');
     } finally {
       setIsLoggingIn(false);
     }
@@ -92,11 +118,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
     } catch (err) {
       console.error("Google Auth error:", err);
     }
-  };
-
-  const handleQuickSelect = (client: Client) => {
-    setActiveStudentId(client.id);
-    localStorage.setItem('fitconnect_student_id', client.id);
   };
 
   const handleLogout = () => {
@@ -127,7 +148,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
         </div>
 
         <Card className="p-6 bg-[#0f172a]/95 backdrop-blur-md border-[#1e293b] shadow-2xl space-y-5 rounded-2xl">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#94a3b8] mb-1.5 flex items-center gap-1.5">
                 <UserCheck className="w-3.5 h-3.5 text-[#00f0ff]" />
@@ -146,19 +167,16 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
             <div>
               <label className="block text-xs font-bold text-[#94a3b8] mb-1.5 flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-[#00f0ff]" />
-                Senha de Acesso (PIN)
+                Senha de Acesso
               </label>
               <input
                 type="password"
                 required
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
-                placeholder="Digite a senha fornecida pelo treinador..."
+                placeholder="Digite sua senha (mínimo 6 caracteres)"
                 className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff] transition-colors"
               />
-              <p className="text-[11px] text-[#64748b] mt-1">
-                Utilize o e-mail e senha cadastrados e liberados pelo seu treinador.
-              </p>
             </div>
 
             {loginError && (
@@ -167,44 +185,27 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
               </div>
             )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isLoggingIn}
-              className="w-full py-3.5 shadow-xl shadow-[#00f0ff]/15 font-bold text-sm flex items-center justify-center gap-2"
-            >
-              {isLoggingIn ? 'Autenticando...' : 'Entrar no Portal Aluno'}
-            </Button>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                type="button"
+                onClick={handleLogin}
+                variant="primary"
+                disabled={isLoggingIn}
+                className="w-full py-3.5 shadow-xl shadow-[#00f0ff]/15 font-bold text-sm flex items-center justify-center gap-2"
+              >
+                {isLoggingIn ? 'Processando...' : 'Entrar'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleRegister}
+                variant="ghost"
+                disabled={isLoggingIn}
+                className="w-full py-3.5 font-bold text-sm flex items-center justify-center gap-2 border border-[#1e293b] hover:border-[#00f0ff]/30 text-[#94a3b8] hover:text-[#f1f5f9]"
+              >
+                Criar Nova Conta
+              </Button>
+            </div>
           </form>
-
-          {/* Demo Quick Access */}
-          <div className="pt-4 border-t border-[#1e293b] space-y-3">
-            <div className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider text-center">
-              Acesso Rápido para Teste
-            </div>
-            <div className="space-y-2">
-              {allClients.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => handleQuickSelect(c)}
-                  className="w-full text-left bg-[#0f172a] hover:bg-[#1f1f26] border border-[#1e293b] hover:border-[#00f0ff]/40 rounded-xl p-3 flex items-center justify-between transition-all group"
-                >
-                  <div>
-                    <div className="text-xs font-bold text-[#f1f5f9] group-hover:text-[#00f0ff] transition-colors flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#00f0ff]"></span>
-                      {c.name}
-                    </div>
-                    <div className="text-[10px] text-[#64748b] mt-0.5">
-                      Senha: <span className="font-mono text-[#00f0ff] font-bold">{c.portal?.pass || '123456'}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-[#00f0ff] flex items-center opacity-70 group-hover:opacity-100 transition-opacity">
-                    Entrar <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </Card>
 
         {onBackToTrainer && (

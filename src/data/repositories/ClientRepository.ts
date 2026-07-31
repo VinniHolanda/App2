@@ -1,6 +1,6 @@
 import { Client, Session } from '../../domain/types';
 import { generateProgram } from '../../domain/engine/prescriptionEngine';
-import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { 
   collection, 
   doc, 
@@ -8,7 +8,10 @@ import {
   getDoc, 
   setDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  query,
+  where,
+  serverTimestamp
 } from 'firebase/firestore';
 import {
   saveClientToIDB,
@@ -34,7 +37,6 @@ export interface IClientRepository {
   saveSession(clientId: string, session: Session): Promise<Client>;
   deleteSession(clientId: string, sessionId: string): Promise<Client>;
   subscribeToClients?(callback: (clients: Client[]) => void): () => void;
-  authenticateStudent?(emailOrQuery: string, password: string): Promise<Client | null>;
 }
 
 function cleanFirestoreData<T>(obj: T): T {
@@ -43,287 +45,11 @@ function cleanFirestoreData<T>(obj: T): T {
   );
 }
 
-const SAMPLE_CLIENTS: Client[] = [
-  {
-    id: "client-1",
-    name: "Ana Carolina Silva",
-    email: "ana@fitconnect.com",
-    whats: "(11) 98765-4321",
-    birth: "1996-05-14",
-    gender: "Feminino",
-    tipo: "Presencial",
-    height: "165",
-    weight: "62",
-    goal: "Ganho de massa (hipertrofia)",
-    level: "Intermediário",
-    days: "4",
-    dur: "60 min",
-    eq: "Academia completa",
-    experience: "Treina há 1-3 anos",
-    parq: { 0: 'nao', 1: 'nao', 2: 'nao', 3: 'nao', 4: 'nao', 5: 'nao', 6: 'nao' },
-    diseases: [],
-    meds: "Nenhum",
-    inj: "",
-    notes: "Foco especial em quadríceps e glúteos",
-    bodyCompositionHistory: [
-      {
-        id: "bio-ana-1",
-        date: "2026-06-01",
-        weekNumber: 1,
-        weightKg: 64.2,
-        heightCm: 165,
-        fatPercentage: 24.8,
-        fatMassKg: 15.9,
-        leanMassKg: 48.3,
-        visceralFatLevel: 4,
-        bmrKcal: 1380,
-        waterPercentage: 54.2,
-        adherenceRatePct: 75,
-        sourceFileName: "Bioimpedancia_InBody270_Junho.pdf",
-        notes: "Início da periodização de hipertrofia. % de gordura moderado.",
-        aiPrescriptionInsights: [
-          "Progressão contínua de volume para quadríceps e glúteos recomendada.",
-          "Consumo proteico sugerido: 2.0g/kg (aprox. 128g/dia).",
-          "Manter 2 sessões de cardio Z2 de 30 min para otimização metabólica."
-        ]
-      },
-      {
-        id: "bio-ana-2",
-        date: "2026-06-22",
-        weekNumber: 4,
-        weightKg: 63.4,
-        heightCm: 165,
-        fatPercentage: 23.1,
-        fatMassKg: 14.6,
-        leanMassKg: 48.8,
-        visceralFatLevel: 3,
-        bmrKcal: 1395,
-        waterPercentage: 55.4,
-        adherenceRatePct: 88,
-        sourceFileName: "InBody_Avaliacao_Semana4.pdf",
-        notes: "Adesão de 88%. Redução expressiva de gordura (-1.3kg) com pequeno ganho muscular (+0.5kg).",
-        aiPrescriptionInsights: [
-          "Boa resposta trófica. Manter sobrecarga progressiva no Agachamento e Leg Press.",
-          "Manter déficit calórico leve sem restringir carboidrato pré-treino."
-        ]
-      },
-      {
-        id: "bio-ana-3",
-        date: "2026-07-20",
-        weekNumber: 8,
-        weightKg: 62.0,
-        heightCm: 165,
-        fatPercentage: 20.8,
-        fatMassKg: 12.9,
-        leanMassKg: 49.1,
-        visceralFatLevel: 3,
-        bmrKcal: 1410,
-        waterPercentage: 56.8,
-        adherenceRatePct: 95,
-        sourceFileName: "Laudo_Bioimpedancia_Julho_Ana.jpeg",
-        notes: "Excelente recomposição corporal com 95% de frequência. +0.8kg de massa magra acumulada e -3.0kg de gordura no ciclo.",
-        aiPrescriptionInsights: [
-          "Resultado excelente! Resposta neuromuscular e hipertrófica consolidada.",
-          "Sugerido bloco de intensificação (8-10 RPE) nas próximas 3 semanas."
-        ]
-      }
-    ],
-    portal: {
-      email: "ana@fitconnect.com",
-      enabled: true,
-      pass: "123456"
-    },
-    reminderSchedule: {
-      enabled: true,
-      days: [1, 2, 4, 5],
-      time: "07:30"
-    },
-    agenda: [
-      { dia: 1, hora: "07:30" },
-      { dia: 2, hora: "07:30" },
-      { dia: 4, hora: "07:30" },
-      { dia: 5, hora: "07:30" }
-    ],
-    classBookings: [
-      {
-        id: "class-ana-1",
-        clientId: "client-1",
-        clientName: "Ana Carolina Silva",
-        date: "2026-07-28",
-        time: "07:30",
-        durationMin: 60,
-        status: "agendada",
-        workoutName: "Treino A — Quadríceps & Glúteos"
-      },
-      {
-        id: "class-ana-2",
-        clientId: "client-1",
-        clientName: "Ana Carolina Silva",
-        date: "2026-07-25",
-        time: "07:30",
-        durationMin: 60,
-        status: "realizada",
-        workoutName: "Treino B — Superiores & Core"
-      },
-      {
-        id: "class-ana-3",
-        clientId: "client-1",
-        clientName: "Ana Carolina Silva",
-        date: "2026-07-21",
-        time: "07:30",
-        durationMin: 60,
-        status: "falta",
-        absenceNotice: "antecipada_24h",
-        allowsReplacement: true,
-        replacementUsed: false,
-        notes: "Avisou com 24h de antecedência por viagem de trabalho. Tem direito a reposição."
-      }
-    ],
-    rpeLog: [
-      {
-        id: "sess-1",
-        date: "2026-07-20",
-        week: 0,
-        dayName: "Lower A — Inferiores",
-        min: 55,
-        srpe: 7.5,
-        tonnage: 4850,
-        by: "aluno",
-        exercises: [
-          {
-            name: "Agachamento livre com barra",
-            pat: "quad",
-            planned: { sets: 4, reps: 10 },
-            sets: [
-              { reps: 10, kg: 60 },
-              { reps: 10, kg: 65 },
-              { reps: 10, kg: 70 },
-              { reps: 8, kg: 70 }
-            ],
-            tonnage: 2510
-          },
-          {
-            name: "Leg press",
-            pat: "quad",
-            planned: { sets: 3, reps: 12 },
-            sets: [
-              { reps: 12, kg: 120 },
-              { reps: 12, kg: 130 },
-              { reps: 10, kg: 140 }
-            ],
-            tonnage: 4400
-          }
-        ]
-      },
-      {
-        id: "sess-2",
-        date: "2026-07-22",
-        week: 0,
-        dayName: "Upper A — Superiores",
-        min: 50,
-        srpe: 7,
-        tonnage: 3200,
-        by: "aluno",
-        exercises: [
-          {
-            name: "Supino reto com halteres",
-            pat: "push_h",
-            planned: { sets: 3, reps: 10 },
-            sets: [
-              { reps: 10, kg: 16 },
-              { reps: 10, kg: 18 },
-              { reps: 8, kg: 18 }
-            ],
-            tonnage: 944
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: "client-2",
-    name: "Marcos Vinícius Oliveira",
-    email: "marcos@fitconnect.com",
-    whats: "(21) 99123-8877",
-    birth: "1990-11-28",
-    gender: "Masculino",
-    tipo: "Consultoria online",
-    height: "178",
-    weight: "84",
-    goal: "Força",
-    level: "Avançado",
-    days: "3",
-    dur: "75 min",
-    eq: "Academia completa",
-    experience: "Treina há 3+ anos",
-    parq: { 0: 'nao', 1: 'nao', 2: 'nao', 3: 'nao', 4: 'nao', 5: 'nao', 6: 'nao' },
-    diseases: [],
-    meds: "Nenhum",
-    inj: "Leve desconforto no ombro esquerdo ao supinar com pegada aberta",
-    portal: {
-      email: "marcos@fitconnect.com",
-      enabled: true,
-      pass: "123456"
-    },
-    classBookings: [
-      {
-        id: "class-marcos-1",
-        clientId: "client-2",
-        clientName: "Marcos Vinícius Oliveira",
-        date: "2026-07-28",
-        time: "18:00",
-        durationMin: 75,
-        status: "agendada",
-        workoutName: "Push — Peito, Ombro e Tríceps"
-      },
-      {
-        id: "class-marcos-2",
-        clientId: "client-2",
-        clientName: "Marcos Vinícius Oliveira",
-        date: "2026-07-24",
-        time: "18:00",
-        durationMin: 75,
-        status: "falta",
-        absenceNotice: "sem_aviso",
-        allowsReplacement: false,
-        notes: "Falta sem aviso prévio. Regra do estúdio: Sem direito a reposição."
-      }
-    ],
-    rpeLog: [
-      {
-        id: "sess-m1",
-        date: "2026-07-21",
-        week: 0,
-        dayName: "Push — Peito / Ombro / Tríceps",
-        min: 65,
-        srpe: 8.5,
-        tonnage: 6200,
-        by: "aluno",
-        exercises: [
-          {
-            name: "Supino reto com barra",
-            pat: "push_h",
-            planned: { sets: 4, reps: 5 },
-            sets: [
-              { reps: 5, kg: 100 },
-              { reps: 5, kg: 105 },
-              { reps: 5, kg: 105 },
-              { reps: 4, kg: 110 }
-            ],
-            tonnage: 2015
-          }
-        ]
-      }
-    ]
-  }
-];
-
-// Pre-generate programs for sample clients
-SAMPLE_CLIENTS.forEach(c => {
-  if (!c.program) {
-    c.program = generateProgram(c);
-  }
-});
+// Ensure the local storage is keyed by user ID to prevent data leakage
+function getStorageKey() {
+  const uid = auth.currentUser?.uid || 'anonymous';
+  return `${STORAGE_KEY}_${uid}`;
+}
 
 export class FirebaseClientRepository implements IClientRepository {
   private isInitialized = false;
@@ -341,25 +67,10 @@ export class FirebaseClientRepository implements IClientRepository {
     }
   }
 
-  private async ensureInitialized(): Promise<void> {
-    if (this.isInitialized) return;
-    try {
-      const colRef = collection(db, COLLECTION_NAME);
-      const snapshot = await getDocs(colRef);
-      if (snapshot.empty) {
-        console.log("Seeding initial clients to Firestore...");
-        for (const sample of SAMPLE_CLIENTS) {
-          const docRef = doc(db, COLLECTION_NAME, sample.id);
-          await setDoc(docRef, cleanFirestoreData(sample));
-        }
-      }
-      this.isInitialized = true;
-    } catch (e) {
-      console.warn("Firestore initialization warning, using IndexedDB / LocalStorage fallback:", e);
-    }
-  }
-
   async syncOfflineQueue(): Promise<void> {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    
     try {
       const pending = await getPendingOfflineActions();
       if (pending.length === 0) return;
@@ -383,6 +94,9 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   async getClients(): Promise<Client[]> {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return [];
+
     const deletedIds = this.getDeletedClientIds();
     const localLS = this.getFromLocalStorage().filter(c => !deletedIds.has(c.id));
     const localIDB = (await getClientsFromIDB()).filter(c => !deletedIds.has(c.id));
@@ -412,9 +126,10 @@ export class FirebaseClientRepository implements IClientRepository {
     const combinedLocal = Array.from(idbMap.values()).filter(c => !deletedIds.has(c.id));
 
     try {
-      await this.ensureInitialized();
       const colRef = collection(db, COLLECTION_NAME);
-      const snapshot = await getDocs(colRef);
+      const q = query(colRef, where('trainerId', '==', uid));
+      const snapshot = await getDocs(q);
+      
       if (!snapshot.empty) {
         const remoteClients: Client[] = [];
         snapshot.forEach(docSnap => {
@@ -452,13 +167,14 @@ export class FirebaseClientRepository implements IClientRepository {
         this.saveToLocalStorage(merged);
         await saveClientsToIDB(merged);
         return merged;
+      } else {
+        return [];
       }
     } catch (e) {
       console.warn("Firestore getClients offline/error fallback:", e);
     }
 
-    const fallback = SAMPLE_CLIENTS.filter(c => !deletedIds.has(c.id));
-    return combinedLocal.length > 0 ? combinedLocal : fallback;
+    return combinedLocal;
   }
 
   async getClientById(id: string): Promise<Client | null> {
@@ -497,15 +213,21 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   async saveClient(client: Client): Promise<Client> {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error("Usuário não autenticado");
+
+    if (!client.trainerId) {
+      client.trainerId = uid;
+    }
+
     if (!client.program && client.goal && client.level) {
       client.program = generateProgram(client);
     }
 
     if (!client.portal) {
       client.portal = {
-        email: client.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`,
-        enabled: true,
-        pass: '123456'
+        email: client.email || `${client.name.toLowerCase().replace(/\\s+/g, '.')}@fitconnect.com`,
+        enabled: true
       };
     }
 
@@ -520,6 +242,7 @@ export class FirebaseClientRepository implements IClientRepository {
 
     // 2. Sync to Firestore if online, or queue offline if network is down
     try {
+      client.updatedAt = serverTimestamp();
       const cleaned = cleanFirestoreData(client);
       const docRef = doc(db, COLLECTION_NAME, client.id);
       await setDoc(docRef, cleaned, { merge: true });
@@ -585,9 +308,17 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   subscribeToClients(callback: (clients: Client[]) => void): () => void {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      callback([]);
+      return () => {};
+    }
+
     const colRef = collection(db, COLLECTION_NAME);
+    const q = query(colRef, where('trainerId', '==', uid));
+    
     return onSnapshot(
-      colRef, 
+      q, 
       snapshot => {
         if (!snapshot.empty) {
           const clients: Client[] = [];
@@ -596,6 +327,8 @@ export class FirebaseClientRepository implements IClientRepository {
           });
           this.saveToLocalStorage(clients);
           callback(clients);
+        } else {
+          callback([]);
         }
       }, 
       err => {
@@ -603,19 +336,6 @@ export class FirebaseClientRepository implements IClientRepository {
         callback(this.getFromLocalStorage());
       }
     );
-  }
-
-  async authenticateStudent(emailOrQuery: string, pass: string): Promise<Client | null> {
-    const clients = await this.getClients();
-    const query = emailOrQuery.trim().toLowerCase();
-
-    return clients.find(c => {
-      const matchEmail = c.email?.toLowerCase() === query || c.portal?.email?.toLowerCase() === query;
-      const matchName = c.name.toLowerCase().includes(query);
-      const storedPass = c.portal?.pass || '123456';
-      
-      return (matchEmail || matchName) && storedPass === pass;
-    }) || null;
   }
 
   private getDeletedClientIds(): Set<string> {
@@ -642,7 +362,7 @@ export class FirebaseClientRepository implements IClientRepository {
 
   private saveToLocalStorage(clients: Client[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+      localStorage.setItem(getStorageKey(), JSON.stringify(clients));
     } catch (e) {
       console.error("LocalStorage save failed:", e);
     }
@@ -651,7 +371,7 @@ export class FirebaseClientRepository implements IClientRepository {
   private getFromLocalStorage(): Client[] {
     const deletedIds = this.getDeletedClientIds();
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(getStorageKey());
       if (stored !== null) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
@@ -661,7 +381,7 @@ export class FirebaseClientRepository implements IClientRepository {
     } catch (e) {
       console.error("LocalStorage get failed:", e);
     }
-    return SAMPLE_CLIENTS.filter(c => !deletedIds.has(c.id));
+    return [];
   }
 }
 

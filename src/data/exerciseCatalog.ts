@@ -1,6 +1,6 @@
 import { MovementPattern } from '../domain/types';
-import { db } from '../lib/firebase';
-import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { collection, doc, setDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 
 export type EquipmentCategory = 
   | 'Máquina'
@@ -1196,9 +1196,13 @@ export function getCustomExercises(): CatalogExercise[] {
 
 export async function fetchCustomExercisesFromFirestore(): Promise<CatalogExercise[]> {
   const local = getCustomExercises();
+  const uid = auth.currentUser?.uid;
+  if (!uid) return local;
+
   try {
     const colRef = collection(db, CUSTOM_EXERCISES_COLLECTION);
-    const snapshot = await getDocs(colRef);
+    const q = query(colRef, where('trainerId', '==', uid));
+    const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const remote: CatalogExercise[] = [];
       snapshot.forEach(docSnap => {
@@ -1218,13 +1222,18 @@ export async function fetchCustomExercisesFromFirestore(): Promise<CatalogExerci
 }
 
 export function saveCustomExercise(exercise: Omit<CatalogExercise, 'id' | 'n' | 'p'> & { p?: MovementPattern }): CatalogExercise {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Usuário não autenticado");
+
   const newEx: CatalogExercise = {
     ...exercise,
     id: `custom-ex-${Date.now()}`,
     n: exercise.name,
     p: exercise.p || exercise.pattern,
-    custom: true
-  };
+    custom: true,
+    trainerId: uid,
+    updatedAt: serverTimestamp()
+  } as any;
 
   const existing = getCustomExercises();
   const updated = [newEx, ...existing];

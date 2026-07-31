@@ -226,6 +226,8 @@ export interface ClientAgendaSlot {
 
 export interface Client {
   id: string;
+  trainerId?: string;
+  updatedAt?: any;
   name: string;
   email?: string;
   whats?: string;
@@ -267,6 +269,7 @@ export interface Client {
     email: string;
     enabled: boolean;
     pass?: string;
+    inviteCode?: string;
   };
 }
 
