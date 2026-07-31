@@ -220,7 +220,8 @@ export class OvertrainingMonitoringService {
    */
   public static evaluateAllClients(clients: Client[]): InjuryRiskNotification[] {
     const allNotifications: InjuryRiskNotification[] = [];
-    clients.forEach(client => {
+    (clients || []).forEach(client => {
+      if (!client) return;
       const clientRiskList = this.evaluateClientRisk(client);
       allNotifications.push(...clientRiskList);
     });

@@ -136,19 +136,37 @@ export function useTrainerViewModel() {
     }
   };
 
-  const handleDeleteClient = async (id: string) => {
-    if (confirm("Deseja realmente excluir este aluno e seus dados?")) {
-      await clientRepository.deleteClient(id);
-      showToast("Aluno excluído");
-      const updated = clients.filter(c => c.id !== id);
-      setClients(updated);
-      if (updated.length > 0) {
-        setSelectedClientId(updated[0].id);
-      } else {
-        setSelectedClientId(null);
-        setActiveNavTab('dashboard');
-      }
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+
+  const handleDeleteClient = (id: string) => {
+    const target = clients.find(c => c.id === id);
+    if (target) {
+      setClientToDelete(target);
     }
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    const id = clientToDelete.id;
+    const clientName = clientToDelete.name;
+    setClientToDelete(null);
+
+    await clientRepository.deleteClient(id);
+    showToast(`Aluno ${clientName} excluído com sucesso`);
+    const updated = clients.filter(c => c.id !== id);
+    setClients(updated);
+    if (updated.length > 0) {
+      if (selectedClientId === id) {
+        setSelectedClientId(updated[0].id);
+      }
+    } else {
+      setSelectedClientId(null);
+      setActiveNavTab('dashboard');
+    }
+  };
+
+  const cancelDeleteClient = () => {
+    setClientToDelete(null);
   };
 
   const handleGenerateNewProgram = async (clientId: string, promptNotes: string = '') => {
@@ -386,6 +404,9 @@ export function useTrainerViewModel() {
     selectClient,
     handleSaveClient,
     handleDeleteClient,
+    clientToDelete,
+    confirmDeleteClient,
+    cancelDeleteClient,
     handleGenerateNewProgram,
     handleApplyAutoMeso,
     handleSendTrainerMessage,

@@ -68,15 +68,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
       if (clientRepository.authenticateStudent) {
         const student = await clientRepository.authenticateStudent(loginEmail, loginPass);
         if (student) {
+          if (student.portal?.enabled === false) {
+            setLoginError('O acesso ao portal para este aluno está temporariamente bloqueado pelo treinador.');
+            return;
+          }
           setActiveStudentId(student.id);
           localStorage.setItem('fitconnect_student_id', student.id);
           setIsLoggingIn(false);
           return;
         }
       }
-      setLoginError('Credenciais incorretas ou senha inválida. Verifique com seu treinador.');
+      setLoginError('E-mail ou senha incorretos. Verifique os dados fornecidos pelo seu treinador.');
     } catch (err) {
-      setLoginError('Erro ao conectar ao servidor. Tente novamente.');
+      setLoginError('Erro ao realizar login. Tente novamente.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -126,32 +130,35 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({ clientId: 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#94a3b8] mb-1.5 flex items-center gap-1.5">
-                <UserCheck className="w-3 h-3 text-[#00f0ff]" />
-                E-mail ou Nome do Aluno
+                <UserCheck className="w-3.5 h-3.5 text-[#00f0ff]" />
+                E-mail do Aluno
               </label>
               <input
-                type="text"
+                type="email"
                 required
                 value={loginEmail}
                 onChange={e => setLoginEmail(e.target.value)}
-                placeholder="Ex: Ana Silva ou ana@fitconnect.com"
+                placeholder="Ex: ana@fitconnect.com"
                 className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff] transition-colors"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-[#94a3b8] mb-1.5 flex items-center gap-1.5">
-                <Key className="w-3 h-3 text-[#00f0ff]" />
-                Senha do Portal
+                <Key className="w-3.5 h-3.5 text-[#00f0ff]" />
+                Senha de Acesso (PIN)
               </label>
               <input
                 type="password"
                 required
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
-                placeholder="Digite sua senha..."
+                placeholder="Digite a senha fornecida pelo treinador..."
                 className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff] transition-colors"
               />
+              <p className="text-[11px] text-[#64748b] mt-1">
+                Utilize o e-mail e senha cadastrados e liberados pelo seu treinador.
+              </p>
             </div>
 
             {loginError && (
@@ -428,7 +435,10 @@ const StudentPortalActiveContent: React.FC<{
                 {isActive && (
                   <motion.div
                     layoutId="studentPortalActiveTab"
-                    className="absolute inset-0 bg-gradient-to-r from-[#00f0ff] to-[#38bdf8] rounded-xl shadow-lg shadow-[#00f0ff]/20 -z-10"
+                    className="absolute inset-0 rounded-xl shadow-lg -z-10"
+                    style={{
+                      background: `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})`
+                    }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}

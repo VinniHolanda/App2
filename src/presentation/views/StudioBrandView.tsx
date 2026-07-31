@@ -73,13 +73,11 @@ export const StudioBrandView: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (confirm('Deseja restaurar as configurações originais da marca?')) {
-      resetBrand();
-      setFormData(brand);
-      setLogoPreview('');
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    }
+    resetBrand();
+    setFormData(brand);
+    setLogoPreview('');
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   return (

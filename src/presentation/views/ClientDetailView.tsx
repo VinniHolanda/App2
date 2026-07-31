@@ -20,6 +20,7 @@ import { ComparativeLoadProgressionChart } from '../components/trainer/Comparati
 import { AISubstitutionAssistantModal } from '../components/trainer/AISubstitutionAssistantModal';
 import { BodyCompositionIntegrationWidget } from '../components/trainer/BodyCompositionIntegrationWidget';
 import { StudentInviteModal } from '../components/trainer/StudentInviteModal';
+import { WeeklyVolumeHeatmapWidget } from '../components/trainer/WeeklyVolumeHeatmapWidget';
 import { ProgramExercise } from '../../domain/types';
 import { calculateWeekStats, calculatePersonalRecords } from '../../domain/calculators/loadCalculators';
 import { calculateStudentClassStats } from '../../domain/calculators/classStatsCalculator';
@@ -465,7 +466,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                   </div>
                 </div>
 
-                {client.program.days.map((day, di) => (
+                {(client.program.days || []).map((day, di) => (
                   <motion.div
                     key={di}
                     initial={{ opacity: 0, y: 15 }}
@@ -495,7 +496,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                           </tr>
                         </thead>
                         <tbody>
-                          {day.exercises.map((ex, ei) => (
+                          {(day.exercises || []).map((ex, ei) => (
                             <tr key={ei} className="border-b border-[#1e293b]/50 hover:bg-[#0f172a] transition-colors">
                               <td className="py-2.5 px-2 font-bold text-[#f1f5f9]">
                                 {ex.name}
@@ -925,14 +926,87 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-5 space-y-3">
-              <h3 className="font-display font-bold text-base text-[#00f0ff]">Credenciais do Portal Aluno</h3>
-              <div className="text-sm space-y-2 text-[#f1f5f9]">
-                <div><strong className="text-[#64748b]">E-mail/Login:</strong> {client.portal?.email || client.email || '—'}</div>
-                <div><strong className="text-[#64748b]">Senha de Acesso:</strong> <span className="font-mono text-[#00f0ff] font-bold px-2 py-0.5 rounded bg-[#0f172a] border border-[#1e293b]">{client.portal?.pass || '123456'}</span></div>
-                <p className="text-xs text-[#94a3b8] pt-1">
-                  Passe esta senha para o aluno acessar o app. Ele poderá logar no Portal Aluno e registrar o treino em tempo real.
-                </p>
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-base text-[#00f0ff]">Credenciais de Acesso do Aluno</h3>
+                <Badge variant={client.portal?.enabled !== false ? 'accent' : 'neutral'}>
+                  {client.portal?.enabled !== false ? 'Acesso Ativo' : 'Acesso Bloqueado'}
+                </Badge>
+              </div>
+
+              <div className="space-y-3 text-xs text-[#f1f5f9]">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#64748b] uppercase mb-1">
+                    E-mail de Login do Aluno
+                  </label>
+                  <input
+                    type="email"
+                    value={client.portal?.email || client.email || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onSaveClient?.({
+                        ...client,
+                        email: val,
+                        portal: {
+                          email: val,
+                          enabled: client.portal?.enabled ?? true,
+                          pass: client.portal?.pass || '123456'
+                        }
+                      });
+                    }}
+                    placeholder="aluno@fitconnect.com"
+                    className="w-full bg-[#080b11] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-[#f1f5f9] focus:border-[#00f0ff] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#64748b] uppercase mb-1">
+                    Senha / PIN de Acesso do Portal
+                  </label>
+                  <input
+                    type="text"
+                    value={client.portal?.pass || '123456'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onSaveClient?.({
+                        ...client,
+                        portal: {
+                          email: client.portal?.email || client.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`,
+                          enabled: client.portal?.enabled ?? true,
+                          pass: val
+                        }
+                      });
+                    }}
+                    placeholder="Ex: 123456"
+                    className="w-full bg-[#080b11] border border-[#1e293b] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#00f0ff] focus:border-[#00f0ff] focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-between border-t border-[#1e293b]">
+                  <span className="text-[11px] text-[#94a3b8]">Status do Portal:</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const currentlyEnabled = client.portal?.enabled !== false;
+                      onSaveClient?.({
+                        ...client,
+                        portal: {
+                          email: client.portal?.email || client.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`,
+                          enabled: !currentlyEnabled,
+                          pass: client.portal?.pass || '123456'
+                        }
+                      });
+                    }}
+                    className={`text-xs py-1 px-3 font-bold ${
+                      client.portal?.enabled !== false
+                        ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                        : 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                    }`}
+                  >
+                    {client.portal?.enabled !== false ? 'Acesso Liberado (Clique p/ Bloquear)' : 'Acesso Bloqueado (Clique p/ Liberar)'}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -946,6 +1020,10 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 
             <div className="md:col-span-2">
               <TrainerNotesWidget client={client} onSaveClient={onSaveClient} />
+            </div>
+
+            <div className="md:col-span-2">
+              <WeeklyVolumeHeatmapWidget clients={[client]} selectedClientId={client.id} />
             </div>
           </motion.div>
         )}

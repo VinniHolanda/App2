@@ -8,7 +8,7 @@ import { ExerciseLibraryView } from './presentation/views/ExerciseLibraryView';
 import { TrainerScheduleView } from './presentation/views/TrainerScheduleView';
 import { StudioBrandView } from './presentation/views/StudioBrandView';
 import { Button, Modal, Badge } from './presentation/components/ui/Primitives';
-import { Layers, Activity, Dumbbell, ShieldCheck, Cpu, Layout, Sparkles, BookOpen, Users, LogIn, LogOut, Calendar, Palette } from 'lucide-react';
+import { Layers, Activity, Dumbbell, ShieldCheck, Cpu, Layout, Sparkles, BookOpen, Users, LogIn, LogOut, Calendar, Palette, AlertTriangle, Trash2 } from 'lucide-react';
 import { GeminiChatbot } from './presentation/components/ai/GeminiChatbot';
 import { PwaInstallBanner } from './presentation/components/pwa/PwaInstallBanner';
 import { useAuth } from './presentation/context/AuthContext';
@@ -21,7 +21,6 @@ function MainAppContent() {
   const { currentUser, userProfile, logout, setProfileRole } = useAuth();
   const { brand } = useBrand();
   const [appRole, setAppRole] = useState<'trainer' | 'student'>('trainer');
-  const [showArchDocModal, setShowArchDocModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
@@ -112,17 +111,6 @@ function MainAppContent() {
           {/* PWA Installation & Status Badge */}
           <PwaInstallBanner />
 
-          {/* Architecture & Evaluation Guide button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowArchDocModal(true)}
-            className="text-xs border border-[#1e293b] hover:border-[#00f0ff]/40 hidden lg:flex"
-          >
-            <Layers className="w-3.5 h-3.5" style={{ color: brand.primaryColor }} />
-            <span>Guia de Arquitetura</span>
-          </Button>
-
           {/* Mode Switcher */}
           <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
             <button
@@ -160,8 +148,8 @@ function MainAppContent() {
             </button>
           </div>
 
-          {/* Firebase Authentication Widget */}
-          {currentUser ? (
+          {/* Firebase / User Authentication Widget */}
+          {(currentUser || userProfile) ? (
             <div className="flex items-center gap-2 bg-[#0f172a] border border-[#1e293b] rounded-xl px-2.5 py-1 text-xs">
               <div 
                 className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px]"
@@ -170,19 +158,19 @@ function MainAppContent() {
                   color: brand.primaryColor
                 }}
               >
-                {currentUser.photoURL ? (
+                {currentUser?.photoURL ? (
                   <img src={currentUser.photoURL} alt="Avatar" className="w-6 h-6 rounded-full" />
                 ) : (
-                  (userProfile?.displayName || currentUser.email || 'U')[0].toUpperCase()
+                  (userProfile?.displayName || currentUser?.email || 'U')[0].toUpperCase()
                 )}
               </div>
               <div className="hidden sm:block text-left">
                 <div className="font-bold text-[#f1f5f9] text-[11px] truncate max-w-[110px]">
-                  {userProfile?.displayName || currentUser.email?.split('@')[0]}
+                  {userProfile?.displayName || currentUser?.email?.split('@')[0]}
                 </div>
                 <div className="text-[9px] font-mono flex items-center gap-1" style={{ color: brand.primaryColor }}>
                   <ShieldCheck className="w-2.5 h-2.5 shrink-0" />
-                  <span>Firebase Auth</span>
+                  <span>{currentUser ? 'Firebase Auth' : 'Sessão Ativa'}</span>
                 </div>
               </div>
               <button
@@ -312,6 +300,7 @@ function MainAppContent() {
                         if (tab) trainerVm.setActiveClientTab(tab as any);
                       }}
                       onSaveClient={trainerVm.handleSaveClient}
+                      onDeleteClient={trainerVm.handleDeleteClient}
                       onOpenLibrary={() => trainerVm.setActiveNavTab('library')}
                       onApplyAutoDeload={trainerVm.handleApplyDeload}
                     />
@@ -412,40 +401,65 @@ function MainAppContent() {
         </AnimatePresence>
       </main>
 
+      {/* Modal de Confirmação de Exclusão de Aluno */}
+      <AnimatePresence>
+        {trainerVm.clientToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-[#0f172a] border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-red-400">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#f1f5f9]">Excluir Aluno</h3>
+                  <p className="text-xs text-[#94a3b8]">Ação irreversível no sistema</p>
+                </div>
+              </div>
+
+              <div className="bg-[#080b11] border border-[#1e293b] rounded-xl p-4 text-xs text-[#cbd5e1] space-y-2">
+                <p>
+                  Tem certeza que deseja excluir o aluno <strong className="text-white">{trainerVm.clientToDelete.name}</strong>?
+                </p>
+                <p className="text-[#94a3b8]">
+                  Esta ação removerá permanentemente o perfil, o programa de treinos e todo o histórico de carga e presença do aluno.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={trainerVm.cancelDeleteClient}
+                  className="text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={trainerVm.confirmDeleteClient}
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Sim, Excluir Aluno</span>
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Architecture Analysis & Structure Modal */}
       <WelcomeRoleModal
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
         onSelectRole={(role, studentId) => handleRoleSwitch(role, studentId)}
       />
-
-      <Modal
-        isOpen={showArchDocModal}
-        onClose={() => setShowArchDocModal(false)}
-        title="Arquitetura e Personalização da Plataforma"
-      >
-        <div className="space-y-6 text-xs leading-relaxed text-[#f1f5f9]">
-          <div className="bg-[#0f172a] border border-[#1e293b] p-4 rounded-xl space-y-2">
-            <h4 className="font-display text-sm font-bold flex items-center gap-2" style={{ color: brand.primaryColor }}>
-              <Sparkles className="w-4 h-4" />
-              1. White-Label & Personalização de Marca
-            </h4>
-            <p className="text-[#94a3b8]">
-              O estúdio e o treinador têm total liberdade para definir o nome da sua consultoria, cores primárias/secundárias, logotipo e mensagens exclusivas para os alunos.
-            </p>
-          </div>
-
-          <div className="bg-[#0f172a] border border-[#1e293b] p-4 rounded-xl space-y-2">
-            <h4 className="font-display text-sm font-bold flex items-center gap-2" style={{ color: brand.primaryColor }}>
-              <Layers className="w-4 h-4" />
-              2. Arquitetura Desacoplada (Clean Arch + MVVM)
-            </h4>
-            <p className="text-[#94a3b8]">
-              Entidades de domínio puras sem dependência de UI, ViewModel reativo em hooks e camada de apresentação totalmente desacoplada.
-            </p>
-          </div>
-        </div>
-      </Modal>
 
       {/* Floating Multi-Turn Gemini AI Assistant */}
       <GeminiChatbot initialRole={appRole === 'trainer' ? 'physio' : 'coach'} />

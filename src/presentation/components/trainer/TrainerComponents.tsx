@@ -4,14 +4,15 @@ import { Badge, Button, Card, Modal } from '../ui/Primitives';
 import { calculateWeeklyVolume } from '../../../domain/calculators/volumeCalculators';
 import { MOVEMENT_PATTERN_LABELS, EXERCISE_CATALOG } from '../../../data/exerciseCatalog';
 import { OvertrainingMonitoringService } from '../../../domain/services/OvertrainingMonitoringService';
-import { AlertOctagon, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, ShieldAlert, Trash2 } from 'lucide-react';
 
 export interface ClientCardProps {
   client: Client;
   onClick: () => void;
+  onDeleteClient?: (id: string) => void;
 }
 
-export const ClientCard: React.FC<ClientCardProps> = ({ client, onClick }) => {
+export const ClientCard: React.FC<ClientCardProps> = ({ client, onClick, onDeleteClient }) => {
   const isParqWarn = client.parq && Object.values(client.parq).some(v => v === 'sim');
   const monotonyStatus = OvertrainingMonitoringService.getClientMonotonyStatus(client);
   const initials = client.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
@@ -96,6 +97,19 @@ export const ClientCard: React.FC<ClientCardProps> = ({ client, onClick }) => {
             <h3 className="font-bold text-base text-[#f1f5f9] truncate group-hover:text-[#00f0ff] transition-colors">
               {client.name}
             </h3>
+            {onDeleteClient && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteClient(client.id);
+                }}
+                className="text-[#64748b] hover:text-red-400 p-1 rounded-lg transition-colors"
+                title="Excluir Aluno"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="text-xs text-[#80808c] font-medium flex items-center gap-2 mt-0.5">
             <span className={`px-1.5 py-0.2 rounded border text-[10px] font-bold ${levelColor}`}>

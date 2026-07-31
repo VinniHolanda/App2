@@ -378,9 +378,7 @@ export const MonthlyWorkoutCalendar: React.FC<MonthlyWorkoutCalendarProps> = ({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm(`Remover sessão ${sess.dayName} do dia ${sess.date}?`)) {
-                                  onDeleteSession(client.id, sess.id);
-                                }
+                                onDeleteSession(client.id, sess.id);
                               }}
                               className="text-[#64748b] hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
                               title="Remover sessão"
@@ -557,10 +555,8 @@ export const MonthlyWorkoutCalendar: React.FC<MonthlyWorkoutCalendarProps> = ({
                   variant="danger"
                   size="sm"
                   onClick={() => {
-                    if (confirm(`Excluir sessão ${selectedSession.dayName}?`)) {
-                      onDeleteSession(client.id, selectedSession.id);
-                      setSelectedSession(null);
-                    }
+                    onDeleteSession(client.id, selectedSession.id);
+                    setSelectedSession(null);
                   }}
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Excluir Sessão

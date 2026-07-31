@@ -34,7 +34,7 @@ export function calculateBiomechanicsProficiency(client: Client) {
   }
 
   // Adjust injury score if sessions are consistently logged with safe sRPE (<8.5)
-  if (sessionCount > 3 && weekStats.meanSRPE > 0 && weekStats.meanSRPE <= 8) {
+  if (sessionCount > 3 && weekStats && weekStats.meanSRPE > 0 && weekStats.meanSRPE <= 8) {
     injuryRecoveryScore = Math.min(35, injuryRecoveryScore + 4);
   }
 
@@ -51,9 +51,9 @@ export function calculateBiomechanicsProficiency(client: Client) {
     loadControlScore += Math.min(10, prCount * 2.5);
   }
   
-  if (weekStats.monotony && weekStats.monotony < 2.0) {
+  if (weekStats?.monotony && weekStats.monotony < 2.0) {
     loadControlScore += 5; // Healthy variance in load
-  } else if (weekStats.monotony && weekStats.monotony >= 2.5) {
+  } else if (weekStats?.monotony && weekStats.monotony >= 2.5) {
     loadControlScore -= 3; // Risk of overuse
   }
 
@@ -99,7 +99,7 @@ export function calculateBiomechanicsProficiency(client: Client) {
     insights.push('Registre mais séries com carga para calibrar as métricas de 1RM e eficácia de força.');
   }
 
-  if (weekStats.monotony && weekStats.monotony >= 2.0) {
+  if (weekStats?.monotony && weekStats.monotony >= 2.0) {
     insights.push('⚠️ Índice de Monotonia alto (> 2.0). Alterne intensidades para reduzir o estresse articular.');
   }
 

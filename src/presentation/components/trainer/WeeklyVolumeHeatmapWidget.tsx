@@ -39,25 +39,27 @@ interface CellData {
 }
 
 export const WeeklyVolumeHeatmapWidget: React.FC<WeeklyVolumeHeatmapWidgetProps> = ({
-  clients,
+  clients = [],
   selectedClientId = 'todos',
   onSelectClient
 }) => {
   const [activeClientFilter, setActiveClientFilter] = useState<string>(selectedClientId);
   const [hoveredCell, setHoveredCell] = useState<CellData | null>(null);
 
+  const safeClients = useMemo(() => clients || [], [clients]);
+
   // Filter clients with active programs
   const clientsWithPrograms = useMemo(() => {
-    return clients.filter(c => c.program && c.program.days && c.program.days.length > 0);
-  }, [clients]);
+    return safeClients.filter(c => c && c.program && c.program.days && c.program.days.length > 0);
+  }, [safeClients]);
 
   // Selected client or default first
   const currentClient = useMemo(() => {
     if (activeClientFilter === 'todos') {
-      return clientsWithPrograms[0] || clients[0] || null;
+      return clientsWithPrograms[0] || safeClients[0] || null;
     }
-    return clients.find(c => c.id === activeClientFilter) || null;
-  }, [clients, clientsWithPrograms, activeClientFilter]);
+    return safeClients.find(c => c && c.id === activeClientFilter) || null;
+  }, [safeClients, clientsWithPrograms, activeClientFilter]);
 
   // Extract mesocycle weeks from program or generate standard 4-week mesocycle
   const mesoWeeks = useMemo(() => {
@@ -198,25 +200,35 @@ export const WeeklyVolumeHeatmapWidget: React.FC<WeeklyVolumeHeatmapWidgetProps>
 
         {/* Client Selector Filter */}
         <div className="flex items-center gap-2 text-xs">
-          <Filter className="w-3.5 h-3.5 text-[#94a3b8]" />
-          <span className="text-[#94a3b8] font-bold hidden sm:inline">Aluno:</span>
-          <select
-            value={activeClientFilter}
-            onChange={(e) => {
-              setActiveClientFilter(e.target.value);
-              if (onSelectClient && e.target.value !== 'todos') {
-                onSelectClient(e.target.value);
-              }
-            }}
-            className="bg-[#080b11] border border-[#1e293b] focus:border-[#00f0ff] rounded-xl px-3 py-1.5 text-xs text-white font-semibold outline-none transition-all cursor-pointer"
-          >
-            <option value="todos">📊 Média da Turma / Atletas ({clientsWithPrograms.length})</option>
-            {clientsWithPrograms.map(c => (
-              <option key={c.id} value={c.id}>
-                👤 {c.name} ({c.level})
-              </option>
-            ))}
-          </select>
+          {safeClients.length > 1 ? (
+            <>
+              <Filter className="w-3.5 h-3.5 text-[#94a3b8]" />
+              <span className="text-[#94a3b8] font-bold hidden sm:inline">Aluno:</span>
+              <select
+                value={activeClientFilter}
+                onChange={(e) => {
+                  setActiveClientFilter(e.target.value);
+                  if (onSelectClient && e.target.value !== 'todos') {
+                    onSelectClient(e.target.value);
+                  }
+                }}
+                className="bg-[#080b11] border border-[#1e293b] focus:border-[#00f0ff] rounded-xl px-3 py-1.5 text-xs text-white font-semibold outline-none transition-all cursor-pointer"
+              >
+                <option value="todos">📊 Média da Turma / Atletas ({clientsWithPrograms.length})</option>
+                {clientsWithPrograms.map(c => (
+                  <option key={c.id} value={c.id}>
+                    👤 {c.name} ({c.level})
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <div className="bg-[#080b11] border border-[#1e293b] rounded-xl px-3 py-1.5 text-xs text-[#00f0ff] font-bold flex items-center gap-1.5">
+              <span>👤</span>
+              <span>{currentClient?.name || 'Atleta'}</span>
+              <span className="text-[10px] text-[#64748b] font-normal">({currentClient?.level})</span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -15,12 +15,14 @@ import {
   saveClientsToIDB,
   getClientFromIDB,
   getClientsFromIDB,
+  deleteClientFromIDB,
   enqueueOfflineAction,
   getPendingOfflineActions,
   removePendingOfflineAction
 } from '../../lib/indexedDbStorage';
 
 const STORAGE_KEY = 'fitconnect_clients_v2';
+const DELETED_CLIENTS_KEY = 'fitconnect_deleted_clients_v2';
 const COLLECTION_NAME = 'clients';
 
 export interface IClientRepository {
@@ -381,8 +383,9 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   async getClients(): Promise<Client[]> {
-    const localLS = this.getFromLocalStorage();
-    const localIDB = await getClientsFromIDB();
+    const deletedIds = this.getDeletedClientIds();
+    const localLS = this.getFromLocalStorage().filter(c => !deletedIds.has(c.id));
+    const localIDB = (await getClientsFromIDB()).filter(c => !deletedIds.has(c.id));
 
     // Merge LocalStorage and IndexedDB fallback
     const idbMap = new Map<string, Client>();
@@ -406,7 +409,7 @@ export class FirebaseClientRepository implements IClientRepository {
       }
     });
 
-    const combinedLocal = Array.from(idbMap.values());
+    const combinedLocal = Array.from(idbMap.values()).filter(c => !deletedIds.has(c.id));
 
     try {
       await this.ensureInitialized();
@@ -415,7 +418,10 @@ export class FirebaseClientRepository implements IClientRepository {
       if (!snapshot.empty) {
         const remoteClients: Client[] = [];
         snapshot.forEach(docSnap => {
-          remoteClients.push(docSnap.data() as Client);
+          const data = docSnap.data() as Client;
+          if (!deletedIds.has(data.id)) {
+            remoteClients.push(data);
+          }
         });
 
         // Merge remote and local clients so local modifications or new sessions are never overwritten
@@ -442,7 +448,7 @@ export class FirebaseClientRepository implements IClientRepository {
           }
         });
 
-        const merged = Array.from(mergedMap.values());
+        const merged = Array.from(mergedMap.values()).filter(c => !deletedIds.has(c.id));
         this.saveToLocalStorage(merged);
         await saveClientsToIDB(merged);
         return merged;
@@ -451,7 +457,8 @@ export class FirebaseClientRepository implements IClientRepository {
       console.warn("Firestore getClients offline/error fallback:", e);
     }
 
-    return combinedLocal.length > 0 ? combinedLocal : SAMPLE_CLIENTS;
+    const fallback = SAMPLE_CLIENTS.filter(c => !deletedIds.has(c.id));
+    return combinedLocal.length > 0 ? combinedLocal : fallback;
   }
 
   async getClientById(id: string): Promise<Client | null> {
@@ -533,13 +540,18 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   async deleteClient(id: string): Promise<void> {
-    // 1. Immediately delete from LocalStorage
+    // 1. Record deleted ID so it's never re-seeded or restored
+    this.saveDeletedClientId(id);
+
+    // 2. Immediately delete from LocalStorage
     const local = this.getFromLocalStorage();
     const filtered = local.filter(c => c.id !== id);
     this.saveToLocalStorage(filtered);
 
-    // 2. Delete from Firestore
-    const path = `${COLLECTION_NAME}/${id}`;
+    // 3. Immediately delete from IndexedDB
+    await deleteClientFromIDB(id);
+
+    // 4. Delete from Firestore
     try {
       const docRef = doc(db, COLLECTION_NAME, id);
       await deleteDoc(docRef);
@@ -606,6 +618,28 @@ export class FirebaseClientRepository implements IClientRepository {
     }) || null;
   }
 
+  private getDeletedClientIds(): Set<string> {
+    try {
+      const stored = localStorage.getItem(DELETED_CLIENTS_KEY);
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("LocalStorage get deleted IDs failed:", e);
+    }
+    return new Set();
+  }
+
+  private saveDeletedClientId(id: string): void {
+    const deleted = this.getDeletedClientIds();
+    deleted.add(id);
+    try {
+      localStorage.setItem(DELETED_CLIENTS_KEY, JSON.stringify(Array.from(deleted)));
+    } catch (e) {
+      console.error("LocalStorage save deleted IDs failed:", e);
+    }
+  }
+
   private saveToLocalStorage(clients: Client[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
@@ -615,18 +649,19 @@ export class FirebaseClientRepository implements IClientRepository {
   }
 
   private getFromLocalStorage(): Client[] {
+    const deletedIds = this.getDeletedClientIds();
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(c => !deletedIds.has(c.id));
         }
       }
     } catch (e) {
       console.error("LocalStorage get failed:", e);
     }
-    return SAMPLE_CLIENTS;
+    return SAMPLE_CLIENTS.filter(c => !deletedIds.has(c.id));
   }
 }
 

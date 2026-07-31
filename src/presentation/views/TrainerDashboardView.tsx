@@ -12,6 +12,7 @@ export interface TrainerDashboardViewProps {
   clients: Client[];
   onSelectClient: (id: string, tab?: string) => void;
   onSaveClient: (clientData: Partial<Client>) => void;
+  onDeleteClient?: (id: string) => void;
   onOpenLibrary?: () => void;
   onApplyAutoDeload?: (clientId: string) => void;
 }
@@ -41,6 +42,7 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
   clients,
   onSelectClient,
   onSaveClient,
+  onDeleteClient,
   onOpenLibrary,
   onApplyAutoDeload
 }) => {
@@ -167,12 +169,19 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Central de Notificações Trigger */}
+          <TrainerAlertsNotificationCenter 
+            clients={clients} 
+            onSelectClient={onSelectClient} 
+            onApplyAutoDeload={onApplyAutoDeload} 
+          />
+
           {onOpenLibrary && (
             <Button
               variant="outline"
               onClick={onOpenLibrary}
-              className="border-[#1e293b] text-[#f1f5f9] hover:bg-[#1e293b] text-xs font-bold py-2.5 px-3.5 flex items-center gap-1.5"
+              className="border-[#1e293b] text-[#f1f5f9] hover:bg-[#1e293b] text-xs font-bold py-2 px-3 flex items-center gap-1.5"
             >
               <BookOpen className="w-4 h-4 text-[#00f0ff]" />
               <span className="hidden sm:inline">Biblioteca</span>
@@ -182,7 +191,7 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
           <Button
             variant="primary"
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-[#00f0ff] text-[#080b11] font-bold text-xs py-2.5 px-4 shadow-md shadow-[#00f0ff]/20 flex items-center gap-1.5"
+            className="bg-[#00f0ff] text-[#080b11] font-bold text-xs py-2 px-3.5 shadow-md shadow-[#00f0ff]/20 flex items-center gap-1.5"
           >
             <Sparkles className="w-4 h-4" />
             <span>+ Novo Aluno</span>
@@ -236,19 +245,6 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Trainer Automated Overtraining & Injury Risk Notification Center */}
-      <TrainerAlertsNotificationCenter 
-        clients={clients} 
-        onSelectClient={onSelectClient} 
-        onApplyAutoDeload={onApplyAutoDeload} 
-      />
-
-      {/* Weekly Volume Density Heatmap (Mapa de Calor de Volume Semanal) */}
-      <WeeklyVolumeHeatmapWidget
-        clients={clients}
-        onSelectClient={onSelectClient}
-      />
 
       {/* Search and Filters Section */}
       <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-4 space-y-4">
@@ -504,6 +500,7 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
                 <ClientCard
                   client={client}
                   onClick={() => onSelectClient(client.id)}
+                  onDeleteClient={onDeleteClient}
                 />
               </motion.div>
             ))}

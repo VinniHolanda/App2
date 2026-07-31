@@ -101,6 +101,25 @@ export async function saveClientsToIDB(clients: Client[]): Promise<void> {
 /**
  * Retrieve client from IndexedDB
  */
+export async function deleteClientFromIDB(id: string): Promise<void> {
+  try {
+    const db = await getIDB();
+    const tx = db.transaction([STORES.CLIENTS, STORES.SESSIONS], 'readwrite');
+    const clientStore = tx.objectStore(STORES.CLIENTS);
+    clientStore.delete(id);
+
+    const sessionStore = tx.objectStore(STORES.SESSIONS);
+    const index = sessionStore.index('clientId');
+    const req = index.getAllKeys(id);
+    req.onsuccess = () => {
+      const keys = req.result;
+      keys.forEach(k => sessionStore.delete(k));
+    };
+  } catch (err) {
+    console.warn('Erro ao remover do IndexedDB:', err);
+  }
+}
+
 export async function getClientFromIDB(id: string): Promise<Client | null> {
   try {
     const db = await getIDB();

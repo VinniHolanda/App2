@@ -15,7 +15,7 @@ export interface TrainerAlertsNotificationCenterProps {
 }
 
 export const TrainerAlertsNotificationCenter: React.FC<TrainerAlertsNotificationCenterProps> = ({
-  clients,
+  clients = [],
   onSelectClient,
   onApplyAutoDeload
 }) => {
@@ -25,7 +25,7 @@ export const TrainerAlertsNotificationCenter: React.FC<TrainerAlertsNotification
 
   // Evaluate all notifications from live client data
   const rawNotifications = useMemo(() => {
-    return OvertrainingMonitoringService.evaluateAllClients(clients);
+    return OvertrainingMonitoringService.evaluateAllClients(clients || []);
   }, [clients]);
 
   // Active non-dismissed notifications
@@ -46,111 +46,40 @@ export const TrainerAlertsNotificationCenter: React.FC<TrainerAlertsNotification
   };
 
   return (
-    <div className="space-y-4">
-      {/* TOP NOTIFICATION BANNER / BADGE ROW */}
-      <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            criticalCount > 0 
-              ? 'bg-red-500/10 border border-red-500/30 text-red-400 animate-pulse' 
-              : (warningCount > 0 ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' : 'bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff]')
-          }`}>
-            <Bell className="w-5 h-5" />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-[#f1f5f9]">
-                Serviço de Monitoramento & Prevenção de Lesões
-              </h3>
-              {activeNotifications.length > 0 && (
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                  criticalCount > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                }`}>
-                  {activeNotifications.length} {activeNotifications.length === 1 ? 'alerta ativo' : 'alertas ativos'}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-[#94a3b8]">
-              {activeNotifications.length > 0 
-                ? `${criticalCount} crítico(s) e ${warningCount} aviso(s) de risco por excesso de carga ou monotonia.`
-                : 'Todos os atletas estão operando dentro das zonas de carga seguras (ACWR < 1.35 e Monotonia < 1.8).'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {activeNotifications.length > 0 ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsOpenModal(true)}
-              className="font-bold text-xs py-2 px-3.5 flex items-center gap-1.5 shadow-md shadow-[#00f0ff]/20"
-            >
-              <ShieldAlert className="w-4 h-4 text-[#080b11]" />
-              <span>Ver Central de Notificações</span>
-            </Button>
-          ) : (
-            <div className="bg-[#080b11] text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Monitoramento Ativo</span>
-            </div>
+    <>
+      {/* Central de Notificações Trigger Button */}
+      <button
+        onClick={() => setIsOpenModal(true)}
+        className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+          criticalCount > 0
+            ? 'bg-red-500/10 border-red-500/40 text-red-300 hover:bg-red-500/20'
+            : warningCount > 0
+            ? 'bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20'
+            : 'bg-[#0f172a] border-[#1e293b] text-[#f1f5f9] hover:bg-[#1e293b] hover:border-[#00f0ff]/40'
+        }`}
+        title="Central de Notificações e Recomendações da IA"
+      >
+        <div className="relative flex items-center justify-center">
+          <Bell className={`w-4 h-4 ${
+            criticalCount > 0 ? 'text-red-400 animate-bounce' : warningCount > 0 ? 'text-amber-400' : 'text-[#00f0ff]'
+          }`} />
+          {activeNotifications.length > 0 && (
+            <span className={`absolute -top-2.5 -right-2.5 text-[9px] font-black px-1.5 py-0.2 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-white shadow-md ${
+              criticalCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-amber-500'
+            }`}>
+              {activeNotifications.length}
+            </span>
           )}
         </div>
-      </div>
-
-      {/* QUICK INLINE HIGH PRIORITY CARDS (If critical notifications exist) */}
-      {criticalCount > 0 && (
-        <div className="space-y-2">
-          {activeNotifications.filter(n => n.severity === 'critical').slice(0, 2).map(notif => (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs text-red-200 shadow-md"
-            >
-              <div className="flex items-start gap-3">
-                <AlertOctagon className="w-5 h-5 text-red-400 shrink-0 mt-0.5 animate-bounce" />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-red-300">{notif.title}</span>
-                    <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase">
-                      {notif.metricValue}
-                    </span>
-                  </div>
-                  <p className="text-red-200/80 leading-relaxed max-w-2xl">{notif.message}</p>
-                  <p className="text-[11px] font-bold text-red-400 flex items-center gap-1">
-                    <Zap className="w-3 h-3 inline text-red-400" /> Recomendações: {notif.recommendedAction}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {onSelectClient && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSelectClient(notif.clientId, 'msgs')}
-                    className="border-red-500/40 text-red-300 hover:bg-red-500/20 text-xs py-1.5 px-3 flex items-center gap-1 font-bold"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" /> Falar com Aluno
-                  </Button>
-                )}
-                {onApplyAutoDeload && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => onApplyAutoDeload(notif.clientId)}
-                    className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-1.5 px-3 flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Deload -30%
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+        <span>Central de Notificações</span>
+        {activeNotifications.length > 0 && (
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+            criticalCount > 0 ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
+          }`}>
+            {activeNotifications.length}
+          </span>
+        )}
+      </button>
 
       {/* FULL NOTIFICATIONS MODAL */}
       <Modal
@@ -295,6 +224,6 @@ export const TrainerAlertsNotificationCenter: React.FC<TrainerAlertsNotification
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   );
 };

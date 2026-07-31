@@ -115,18 +115,10 @@ export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
             <div className="space-y-2 pt-2 border-t border-[#1e293b]">
               <button
                 onClick={handleChooseTrainer}
-                className="w-full bg-[#00f0ff] hover:bg-[#00d0df] text-[#080b11] font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#00f0ff]/20 transition-all text-xs"
+                className="w-full bg-[#00f0ff] hover:bg-[#00d0df] text-[#080b11] font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#00f0ff]/20 transition-all text-xs"
               >
-                <span>Acessar como Treinador</span>
+                <span>Acessar Painel do Treinador</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => handleGoogleAuth('trainer')}
-                className="w-full bg-[#080b11] hover:bg-[#1a2333] border border-[#1e293b] text-[#94a3b8] hover:text-[#f1f5f9] font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-2 text-[11px] transition-all"
-              >
-                <LogIn className="w-3.5 h-3.5 text-[#00f0ff]" />
-                <span>Entrar com Google / Firebase</span>
               </button>
             </div>
           </div>
@@ -163,17 +155,17 @@ export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
               {!showStudentList ? (
                 <button
                   onClick={() => setShowStudentList(true)}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#080b11] font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all text-xs"
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#080b11] font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all text-xs"
                 >
-                  <span>Selecionar Perfil do Aluno</span>
+                  <span>Acessar como Aluno</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <div className="space-y-2 animate-fade-in max-h-40 overflow-y-auto pr-1">
                   <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
-                    Escolha um Aluno Cadastrado:
+                    Escolha seu perfil de Aluno:
                   </span>
-                  {clients.map(c => (
+                  {(clients || []).map(c => (
                     <button
                       key={c.id}
                       onClick={() => handleChooseStudentDirect(c.id)}
@@ -185,14 +177,6 @@ export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
                   ))}
                 </div>
               )}
-
-              <button
-                onClick={() => handleGoogleAuth('student')}
-                className="w-full bg-[#080b11] hover:bg-[#1a2333] border border-[#1e293b] text-[#94a3b8] hover:text-[#f1f5f9] font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-2 text-[11px] transition-all"
-              >
-                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Entrar com Google / Firebase</span>
-              </button>
             </div>
           </div>
         </div>
