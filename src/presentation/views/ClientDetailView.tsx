@@ -950,36 +950,15 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                         portal: {
                           email: val,
                           enabled: client.portal?.enabled ?? true,
-                          pass: client.portal?.pass || '123456'
                         }
                       });
                     }}
                     placeholder="aluno@fitconnect.com"
                     className="w-full bg-[#080b11] border border-[#1e293b] rounded-xl px-3 py-2 text-xs text-[#f1f5f9] focus:border-[#00f0ff] focus:outline-none"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-[#64748b] uppercase mb-1">
-                    Senha / PIN de Acesso do Portal
-                  </label>
-                  <input
-                    type="text"
-                    value={client.portal?.pass || '123456'}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      onSaveClient?.({
-                        ...client,
-                        portal: {
-                          email: client.portal?.email || client.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`,
-                          enabled: client.portal?.enabled ?? true,
-                          pass: val
-                        }
-                      });
-                    }}
-                    placeholder="Ex: 123456"
-                    className="w-full bg-[#080b11] border border-[#1e293b] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#00f0ff] focus:border-[#00f0ff] focus:outline-none"
-                  />
+                  <p className="text-[10px] text-[#64748b] mt-1">
+                    Este e-mail será usado pelo aluno para criar a conta no aplicativo.
+                  </p>
                 </div>
 
                 <div className="pt-2 flex items-center justify-between border-t border-[#1e293b]">
@@ -994,7 +973,6 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                         portal: {
                           email: client.portal?.email || client.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`,
                           enabled: !currentlyEnabled,
-                          pass: client.portal?.pass || '123456'
                         }
                       });
                     }}

@@ -268,7 +268,6 @@ export interface Client {
   portal?: {
     email: string;
     enabled: boolean;
-    pass?: string;
     inviteCode?: string;
   };
 }
