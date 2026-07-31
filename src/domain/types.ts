@@ -226,7 +226,7 @@ export interface ClientAgendaSlot {
 
 export interface Client {
   id: string;
-  trainerId?: string;
+  trainerId: string;
   updatedAt?: any;
   name: string;
   email?: string;

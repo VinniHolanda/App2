@@ -167,6 +167,95 @@ Regras:
   }
 });
 
+// Gemini Program Generation Endpoint
+app.post('/api/gemini/generate-program', async (req, res) => {
+  try {
+    const { clientData, promptNotes } = req.body;
+    
+    if (!clientData) {
+      return res.status(400).json({ error: 'Dados do aluno são obrigatórios.' });
+    }
+
+    const ai = getGenAI();
+
+    const prompt = `Você é um Treinador Master (PhD em Fisiologia do Treinamento e Biomecânica).
+Sua tarefa é criar um programa de treinamento altamente científico e periodizado para o seguinte aluno:
+
+**Dados do Aluno:**
+- Nome: ${clientData.name}
+- Nível: ${clientData.level}
+- Objetivo: ${clientData.goal}
+- Disponibilidade: ${clientData.daysPerWeek || 3} dias/semana
+- Lesões/Limitações: ${clientData.injuries?.join(', ') || 'Nenhuma'}
+- Equipamento disponível: ${clientData.equipment?.join(', ') || 'Completo (Academia)'}
+${promptNotes ? `- Notas adicionais do treinador: ${promptNotes}` : ''}
+
+**Regras Metodológicas:**
+1. Baseado no nível e objetivo, prescreva um volume semanal adequado (MEV a MRV).
+2. Distribua o treino nos dias disponíveis de forma inteligente (ex: FullBody 3x, AB 4x, ABC 5x).
+3. Utilize métodos avançados de periodização (Cluster sets, Rest-Pause, Drop-sets) apenas para avançados, e focados em técnica/adaptação para iniciantes.
+4. Se houver lesão, substitua exercícios biomecanicamente arriscados, justificando brevemente nas 'notes' do exercício.
+5. O campo "summary" deve ser um resumo inspirador e científico do programa.
+6. "principles" deve listar 3 a 5 princípios biomecânicos ou fisiológicos aplicados.
+
+**Estrutura do JSON Esperado:**
+{
+  "summary": "Resumo do programa...",
+  "principles": ["Princípio 1", "Princípio 2"],
+  "days": [
+    {
+      "name": "Treino A",
+      "focus": "Membros Inferiores (Foco Quadríceps)",
+      "exercises": [
+        {
+          "name": "Agachamento Livre",
+          "pat": "squat",
+          "sets": "3-4",
+          "reps": "8-10",
+          "rest": "120s",
+          "rpe": "8",
+          "notes": "Foque na fase excêntrica controlada (3s)"
+        }
+      ]
+    }
+  ]
+}
+Nota: "pat" (padrão de movimento) deve ser um de: "squat", "hinge", "lunge", "push_horiz", "push_vert", "pull_horiz", "pull_vert", "core", "iso", "carry", "plyo", "mobility", "cardio", "other".
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-pro-preview',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.3,
+      },
+    });
+
+    const text = response.text || '{}';
+    let parsedData = {};
+    try {
+      parsedData = JSON.parse(text);
+    } catch (e) {
+      console.warn('Falha no JSON parse do Gemini:', text);
+      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);
+      if (jsonMatch) {
+        parsedData = JSON.parse(jsonMatch[0]);
+      }
+    }
+
+    res.json({
+      success: true,
+      program: parsedData
+    });
+  } catch (error: any) {
+    console.error('Erro na geração do treino:', error);
+    res.status(500).json({
+      error: error.message || 'Erro ao gerar o programa via IA.',
+    });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

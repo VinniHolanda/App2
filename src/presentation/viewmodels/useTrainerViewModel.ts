@@ -121,7 +121,7 @@ export function useTrainerViewModel() {
     };
 
     if (!clientToSave.program) {
-      clientToSave.program = generateProgram(clientToSave);
+      // clientToSave.program = generateProgram(clientToSave);
     }
 
     const saved = await clientRepository.saveClient(clientToSave);
@@ -130,7 +130,7 @@ export function useTrainerViewModel() {
     if (isNew) {
       setActiveNavTab('client-detail');
       setActiveClientTab('treino');
-      showToast(`Aluno ${saved.name} cadastrado e treino gerado!`);
+      showToast(`Aluno ${saved.name} cadastrado! Clique em "Gerar Treino Automático" para usar a IA.`);
     } else {
       showToast("Perfil atualizado com sucesso!");
     }
@@ -173,23 +173,50 @@ export function useTrainerViewModel() {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    const newProg = generateProgram(client, promptNotes);
-
-    // Save previous program to history
-    if (client.program) {
-      if (!client.programHistory) client.programHistory = [];
-      client.programHistory.unshift({
-        program: JSON.parse(JSON.stringify(client.program)),
-        savedAt: new Date().toISOString(),
-        label: `${client.goal} — ${new Date().toLocaleDateString('pt-BR')}`
+    try {
+      showToast("A Inteligência Artificial está gerando o treino...");
+      const response = await fetch('/api/gemini/generate-program', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientData: {
+            name: client.name,
+            level: client.level,
+            goal: client.goal,
+            daysPerWeek: parseInt(client.days) || 4,
+            injuries: client.injuries || (client.inj ? [client.inj] : []),
+            equipment: [client.eq]
+          },
+          promptNotes
+        })
       });
-      client.programHistory = client.programHistory.slice(0, 5);
-    }
 
-    client.program = newProg;
-    await clientRepository.saveClient(client);
-    await refreshClients();
-    showToast("Novo treino prescrito e salvo!");
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao gerar o programa');
+      }
+
+      const newProg = data.program;
+
+      // Save previous program to history
+      if (client.program) {
+        if (!client.programHistory) client.programHistory = [];
+        client.programHistory.unshift({
+          program: JSON.parse(JSON.stringify(client.program)),
+          savedAt: new Date().toISOString(),
+          label: `${client.goal} — ${new Date().toLocaleDateString('pt-BR')}`
+        });
+        client.programHistory = client.programHistory.slice(0, 5);
+      }
+
+      client.program = newProg;
+      await clientRepository.saveClient(client);
+      await refreshClients();
+      showToast("Novo treino prescrito com IA e salvo com sucesso!");
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Erro ao comunicar com a IA');
+    }
   };
 
   const handleApplyAutoMeso = async (clientId: string, totalWeeks: number) => {
