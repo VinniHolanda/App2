@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  User, 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+import {
+  User,
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
   updateProfile
 } from 'firebase/auth';
@@ -20,20 +21,30 @@ export interface UserProfile {
   displayName: string | null;
   role: UserRole;
   photoURL?: string | null;
-  studentClientId?: string | null; // ID of the client record linked to this account
+  studentClientId?: string | null;
   createdAt?: any;
 }
+
+interface PendingProfile {
+  displayName: string;
+  role: UserRole;
+}
+
+const pendingKey = (uid: string) => `fitconnect_pending_profile_${uid}`;
 
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  needsEmailVerification: boolean;
   signInWithGoogle: (preferredRole?: UserRole) => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, displayName: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   setProfileRole: (role: UserRole) => Promise<void>;
   linkStudentAccount: (clientId: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
+  checkEmailVerified: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,9 +53,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
 
-  // Sync profile from Firestore
-  const fetchUserProfile = async (user: User, defaultRole: UserRole = 'trainer'): Promise<UserProfile> => {
+  const fetchUserProfile = async (user: User, fallback?: PendingProfile): Promise<UserProfile> => {
     const userDocRef = doc(db, 'users', user.uid);
     try {
       const snap = await getDoc(userDocRef);
@@ -53,17 +64,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUserProfile(data);
         return data;
       } else {
-        // Create initial user profile in Firestore
         const newProfile: UserProfile = {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName || user.email?.split('@')[0] || 'Usuário FitConnect',
-          role: defaultRole,
+          displayName: fallback?.displayName || user.displayName || user.email?.split('@')[0] || 'Usuário FitConnect',
+          role: fallback?.role || 'trainer',
           photoURL: user.photoURL || null,
           createdAt: serverTimestamp()
         };
         await setDoc(userDocRef, newProfile, { merge: true });
         setUserProfile(newProfile);
+        localStorage.removeItem(pendingKey(user.uid));
         return newProfile;
       }
     } catch (err) {
@@ -75,14 +86,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+
       if (user) {
         try {
-          await fetchUserProfile(user);
+          await user.reload();
+        } catch (e) {
+          console.warn('Falha ao recarregar usuário:', e);
+        }
+
+        if (!user.emailVerified) {
+          setUserProfile(null);
+          setNeedsEmailVerification(true);
+          setLoading(false);
+          return;
+        }
+
+        setNeedsEmailVerification(false);
+        try {
+          const raw = localStorage.getItem(pendingKey(user.uid));
+          const pending: PendingProfile | undefined = raw ? JSON.parse(raw) : undefined;
+          await fetchUserProfile(user, pending);
         } catch (e) {
           setUserProfile(null);
         }
       } else {
         setUserProfile(null);
+        setNeedsEmailVerification(false);
       }
       setLoading(false);
     });
@@ -93,35 +122,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithGoogle = async (preferredRole: UserRole = 'trainer') => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
-    if (result.user) {
-      await fetchUserProfile(result.user, preferredRole);
+    if (result.user && result.user.emailVerified) {
+      await fetchUserProfile(result.user, { displayName: result.user.displayName || '', role: preferredRole });
     }
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    const result = await signInWithEmailAndPassword(auth, email, pass);
-    if (result.user) {
-      await fetchUserProfile(result.user);
-    }
+    await signInWithEmailAndPassword(auth, email, pass);
   };
 
   const registerWithEmail = async (email: string, pass: string, name: string, role: UserRole) => {
     const result = await createUserWithEmailAndPassword(auth, email, pass);
     if (result.user) {
       await updateProfile(result.user, { displayName: name });
-      
-      const userDocRef = doc(db, 'users', result.user.uid);
-      const newProfile: UserProfile = {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: name,
-        role,
-        photoURL: null,
-        createdAt: serverTimestamp()
-      };
-      await setDoc(userDocRef, newProfile, { merge: true });
-      setUserProfile(newProfile);
+      localStorage.setItem(pendingKey(result.user.uid), JSON.stringify({ displayName: name, role } as PendingProfile));
+      await sendEmailVerification(result.user);
+      setNeedsEmailVerification(true);
+      setUserProfile(null);
     }
+  };
+
+  const resendVerificationEmail = async () => {
+    if (!auth.currentUser) return;
+    await sendEmailVerification(auth.currentUser);
+  };
+
+  const checkEmailVerified = async (): Promise<boolean> => {
+    if (!auth.currentUser) return false;
+    await auth.currentUser.reload();
+    const verified = auth.currentUser.emailVerified;
+    if (verified) {
+      setNeedsEmailVerification(false);
+      const raw = localStorage.getItem(pendingKey(auth.currentUser.uid));
+      const pending: PendingProfile | undefined = raw ? JSON.parse(raw) : undefined;
+      try {
+        await fetchUserProfile(auth.currentUser, pending);
+      } catch (e) {
+        setUserProfile(null);
+      }
+    }
+    return verified;
   };
 
   const logout = async () => {
@@ -131,6 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn("Firebase logout error:", error);
     }
     setUserProfile(null);
+    setNeedsEmailVerification(false);
   };
 
   const setProfileRole = async (role: UserRole) => {
@@ -163,12 +204,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         currentUser,
         userProfile,
         loading,
+        needsEmailVerification,
         signInWithGoogle,
         loginWithEmail,
         registerWithEmail,
         logout,
         setProfileRole,
-        linkStudentAccount
+        linkStudentAccount,
+        resendVerificationEmail,
+        checkEmailVerified
       }}
     >
       {children}

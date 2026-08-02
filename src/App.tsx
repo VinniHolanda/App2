@@ -14,11 +14,12 @@ import { PwaInstallBanner } from './presentation/components/pwa/PwaInstallBanner
 import { useAuth } from './presentation/context/AuthContext';
 import { AuthModal } from './presentation/components/auth/AuthModal';
 import { WelcomeRoleModal } from './presentation/components/auth/WelcomeRoleModal';
+import { VerifyEmailScreen } from './presentation/components/auth/VerifyEmailScreen';
 import { BrandProvider, useBrand } from './presentation/context/BrandContext';
 
 function MainAppContent() {
   const trainerVm = useTrainerViewModel();
-  const { currentUser, userProfile, logout, setProfileRole } = useAuth();
+  const { currentUser, userProfile, logout, setProfileRole, needsEmailVerification } = useAuth();
   const { brand } = useBrand();
   const [appRole, setAppRole] = useState<'trainer' | 'student'>('trainer');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -56,6 +57,10 @@ function MainAppContent() {
       setProfileRole(newRole);
     }
   };
+
+  if (needsEmailVerification) {
+    return <VerifyEmailScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-[#080b11] text-[#f1f5f9] font-sans antialiased flex flex-col overflow-x-hidden">
@@ -112,8 +117,8 @@ function MainAppContent() {
           <PwaInstallBanner />
 
           {/* Mode Switcher */}
-          {!(currentUser || userProfile) && (
-            <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
+          <div className="bg-[#0f172a] p-1 rounded-xl border border-[#1e293b] flex gap-1 text-xs items-center">
+            {(!userProfile || userProfile.role === 'trainer') && (
               <button
                 onClick={() => handleRoleSwitch('trainer')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
@@ -127,6 +132,8 @@ function MainAppContent() {
               >
                 Treinador
               </button>
+            )}
+            {(!userProfile || userProfile.role === 'student') && (
               <button
                 onClick={() => handleRoleSwitch('student')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
@@ -140,6 +147,8 @@ function MainAppContent() {
               >
                 Portal Aluno
               </button>
+            )}
+            {!userProfile && (
               <button
                 onClick={() => setShowWelcomeModal(true)}
                 title="Trocar perfil ou modo de login"
@@ -147,8 +156,8 @@ function MainAppContent() {
               >
                 <Users className="w-3.5 h-3.5" />
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Firebase / User Authentication Widget */}
           {(currentUser || userProfile) ? (
