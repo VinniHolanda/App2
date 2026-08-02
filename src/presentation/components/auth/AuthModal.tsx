@@ -64,8 +64,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultRo
       }
       onClose();
     } catch (err: any) {
-      // In case of any remaining error, close and log in locally
-      onClose();
+      setError(err.message || 'Não foi possível autenticar. Verifique seus dados e tente novamente.');
     } finally {
       setLoading(false);
     }

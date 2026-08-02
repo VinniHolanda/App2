@@ -1,61 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Card, Badge } from '../ui/Primitives';
-import { Client } from '../../../domain/types';
-import { clientRepository } from '../../../data/repositories/ClientRepository';
-import { useAuth } from '../../context/AuthContext';
+import React from 'react';
+import { Modal, Badge } from '../ui/Primitives';
 import { useBrand } from '../../context/BrandContext';
 import { 
-  Users, Dumbbell, ShieldCheck, LogIn, ChevronRight, Sparkles, 
-  CheckCircle2, ArrowRight, Layers, Smartphone, Zap
+  Users, Dumbbell, ArrowRight, ChevronRight, Zap
 } from 'lucide-react';
 
 interface WelcomeRoleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectRole: (role: 'trainer' | 'student', studentId?: string) => void;
+  onOpenAuth: (role: 'trainer' | 'student') => void;
 }
 
 export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
   isOpen,
   onClose,
-  onSelectRole
+  onOpenAuth
 }) => {
   const { brand } = useBrand();
-  const { currentUser, signInWithGoogle } = useAuth();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [showStudentList, setShowStudentList] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      clientRepository.getClients().then(data => {
-        setClients(data);
-        if (data.length > 0) {
-          setSelectedStudentId(data[0].id);
-        }
-      });
-    }
-  }, [isOpen]);
 
   const handleChooseTrainer = () => {
-    onSelectRole('trainer');
+    onOpenAuth('trainer');
     onClose();
   };
 
-  const handleChooseStudentDirect = (studentId?: string) => {
-    const idToUse = studentId || selectedStudentId || (clients[0]?.id);
-    onSelectRole('student', idToUse);
+  const handleChooseStudent = () => {
+    onOpenAuth('student');
     onClose();
-  };
-
-  const handleGoogleAuth = async (role: 'trainer' | 'student') => {
-    try {
-      await signInWithGoogle(role);
-      onSelectRole(role);
-      onClose();
-    } catch (err) {
-      console.error("Google Auth error:", err);
-    }
   };
 
   return (
@@ -101,15 +71,6 @@ export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
                   Prescreva treinos, ajuste periodizações e mesociclos, acompanhe bioimpedância, agenda e envie convites.
                 </p>
               </div>
-
-              <div className="space-y-1.5 text-[11px] text-[#64748b] pt-1">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#00f0ff]" /> Prescrição com Motor Biompressivo
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#00f0ff]" /> Envio de Convites por WhatsApp/Link
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-[#1e293b]">
@@ -140,43 +101,16 @@ export const WelcomeRoleModal: React.FC<WelcomeRoleModalProps> = ({
                   Veja sua ficha do dia no salão de musculação, registre cargas, RPE, tempo sob tensão e notas por áudio.
                 </p>
               </div>
-
-              <div className="space-y-1.5 text-[11px] text-[#64748b] pt-1">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Funcionamento Offline (IndexedDB)
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Timer de Descanso & Gravação de Áudio
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-[#1e293b]">
-              {!showStudentList ? (
-                <button
-                  onClick={() => setShowStudentList(true)}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#080b11] font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all text-xs"
-                >
-                  <span>Acessar como Aluno</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="space-y-2 animate-fade-in max-h-40 overflow-y-auto pr-1">
-                  <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
-                    Escolha seu perfil de Aluno:
-                  </span>
-                  {(clients || []).map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => handleChooseStudentDirect(c.id)}
-                      className="w-full bg-[#080b11] hover:bg-[#1a2333] border border-[#1e293b] hover:border-emerald-500/50 rounded-xl p-2.5 flex items-center justify-between text-left transition-all"
-                    >
-                      <span className="font-bold text-[#f1f5f9] truncate text-xs">{c.name}</span>
-                      <span className="text-[10px] text-emerald-400 font-bold">Acessar →</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <button
+                onClick={handleChooseStudent}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#080b11] font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all text-xs"
+              >
+                <span>Acessar como Aluno</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

@@ -19,8 +19,7 @@ service cloud.firestore {
         && (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 100))
         && (!data.keys().hasAny(['role']) || (data.role is string && (data.role == 'trainer' || data.role == 'student')))
         && (!data.keys().hasAny(['studentClientId']) || (data.studentClientId is string && data.studentClientId.size() <= 128))
-        && (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 2048))
-        && (!data.keys().hasAny(['createdAt']));
+        && (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 2048));
     }
 
     function isValidClient(data) {

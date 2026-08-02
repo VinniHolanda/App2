@@ -469,7 +469,10 @@ function MainAppContent() {
       <WelcomeRoleModal
         isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
-        onSelectRole={(role, studentId) => handleRoleSwitch(role, studentId)}
+        onOpenAuth={(role) => {
+          setAppRole(role);
+          setShowAuthModal(true);
+        }}
       />
 
       {/* Floating Multi-Turn Gemini AI Assistant */}
