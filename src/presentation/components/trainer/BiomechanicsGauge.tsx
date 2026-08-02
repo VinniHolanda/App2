@@ -19,7 +19,7 @@ export function calculateBiomechanicsProficiency(client: Client) {
   // 1. Injury & Recovery Score (Max 35)
   const injText = (client.inj || '').toLowerCase().trim();
   let injuryRecoveryScore = 35;
-  let injuryStatus: 'Excelente' | 'Em Adaptação' | 'Atenção Requerida' = 'Excelente';
+  let injuryStatus: 'Excelente' | 'Em Adaptação' | 'Atenção Requerida' | 'Sem dados suficientes' = 'Excelente';
 
   if (!injText || injText === 'nenhuma' || injText === 'sem lesões' || injText === 'nenhum') {
     injuryRecoveryScore = 35;
@@ -38,26 +38,31 @@ export function calculateBiomechanicsProficiency(client: Client) {
     injuryRecoveryScore = Math.min(35, injuryRecoveryScore + 4);
   }
 
+  if (sessionCount === 0) {
+    injuryRecoveryScore = Math.min(20, injuryRecoveryScore);
+    injuryStatus = 'Sem dados suficientes';
+  }
+
   // 2. Movement Quality & Consistency Score (Max 35)
-  const programDays = client.program?.days || [];
-  const totalExercises = programDays.flatMap(d => d.exercises || []).length;
-  const baseConsistency = Math.min(20, sessionCount * 4);
-  const exerciseDiversityBonus = Math.min(15, totalExercises * 2);
-  const movementQualityScore = Math.min(35, baseConsistency + exerciseDiversityBonus);
+  const movementQualityScore = Math.min(35, sessionCount * 5);
 
   // 3. Load Control & Neuromuscular Efficiency (Max 30)
-  let loadControlScore = 15; // default base
-  if (prCount > 0) {
-    loadControlScore += Math.min(10, prCount * 2.5);
+  let loadControlScore = 0;
+  if (sessionCount > 0) {
+    loadControlScore = 15; // default base when there is at least one session
+    if (prCount > 0) {
+      loadControlScore += Math.min(10, prCount * 2.5);
+    }
+    
+    if (weekStats?.monotony && weekStats.monotony < 2.0) {
+      loadControlScore += 5; // Healthy variance in load
+    } else if (weekStats?.monotony && weekStats.monotony >= 2.5) {
+      loadControlScore -= 3; // Risk of overuse
+    }
+    loadControlScore = Math.min(30, Math.max(5, loadControlScore));
+  } else {
+    loadControlScore = 0;
   }
-  
-  if (weekStats?.monotony && weekStats.monotony < 2.0) {
-    loadControlScore += 5; // Healthy variance in load
-  } else if (weekStats?.monotony && weekStats.monotony >= 2.5) {
-    loadControlScore -= 3; // Risk of overuse
-  }
-
-  loadControlScore = Math.min(30, Math.max(5, loadControlScore));
 
   // Total Score (0 - 100)
   const totalScore = Math.round(movementQualityScore + injuryRecoveryScore + loadControlScore);

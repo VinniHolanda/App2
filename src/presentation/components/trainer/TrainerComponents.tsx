@@ -214,7 +214,6 @@ export interface AddClientModalProps {
 }
 
 export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onSave }) => {
-  const [studentPassword, setStudentPassword] = useState<string>('123456');
   const [formData, setFormData] = useState<Partial<Client>>({
     name: '',
     email: '',
@@ -229,6 +228,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose,
     days: '4',
     dur: '60 min',
     eq: 'Academia completa' as EquipmentProfile,
+    exercisesPerSession: 6,
+    programWeeks: 4,
     notes: '',
     diseases: [],
     parq: { 0: 'nao', 1: 'nao', 2: 'nao', 3: 'nao', 4: 'nao', 5: 'nao', 6: 'nao' }
@@ -245,8 +246,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose,
       email: emailToUse,
       portal: {
         email: emailToUse,
-        enabled: true,
-        pass: studentPassword.trim() || '123456'
+        enabled: true
       }
     });
     onClose();
@@ -279,15 +279,26 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose,
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#94a3b8] mb-1">Senha de Acesso do Aluno</label>
+              <label className="block text-xs font-bold text-[#94a3b8] mb-1">Exercícios por Sessão</label>
               <input
-                type="text"
-                value={studentPassword}
-                onChange={e => setStudentPassword(e.target.value)}
-                placeholder="Ex: 123456"
-                className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#00f0ff] font-mono font-bold focus:outline-none focus:border-[#00f0ff]"
+                type="number"
+                min="1"
+                max="15"
+                value={formData.exercisesPerSession || ''}
+                onChange={e => setFormData({ ...formData, exercisesPerSession: parseInt(e.target.value) || undefined })}
+                className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff]"
               />
-              <span className="text-[10px] text-[#64748b]">O aluno usará esse e-mail e senha no Portal Aluno.</span>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#94a3b8] mb-1">Duração (Semanas)</label>
+              <input
+                type="number"
+                min="1"
+                max="24"
+                value={formData.programWeeks || ''}
+                onChange={e => setFormData({ ...formData, programWeeks: parseInt(e.target.value) || undefined })}
+                className="w-full bg-[#0f172a] border border-[#1e293b] rounded-xl px-3.5 py-2.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff]"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-[#94a3b8] mb-1">WhatsApp</label>

@@ -9,6 +9,13 @@ dotenv.config();
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
+import fs from 'fs';
+
+app.post('/api/log-error', (req, res) => {
+  fs.appendFileSync('error-log.txt', JSON.stringify(req.body) + '\\n');
+  res.send('ok');
+});
+
 const PORT = 3000;
 
 function getGenAI() {
@@ -197,6 +204,8 @@ ${promptNotes ? `- Notas adicionais do treinador: ${promptNotes}` : ''}
 4. Se houver lesão, substitua exercícios biomecanicamente arriscados, justificando brevemente nas 'notes' do exercício.
 5. O campo "summary" deve ser um resumo inspirador e científico do programa.
 6. "principles" deve listar 3 a 5 princípios biomecânicos ou fisiológicos aplicados.
+7. OBRIGATÓRIO: Exercícios por sessão: exatamente ${clientData.exercisesPerSession || 6} exercícios em cada dia de treino (nem mais, nem menos).
+8. OBRIGATÓRIO: Duração do programa: estruturar para ${clientData.programWeeks || 4} semanas de progressão. O JSON tem um campo de progressão/mesociclo, certifique-se de refletir isso lá.
 
 **Estrutura do JSON Esperado:**
 {
@@ -233,15 +242,26 @@ Nota: "pat" (padrão de movimento) deve ser um de: "squat", "hinge", "lunge", "p
     });
 
     const text = response.text || '{}';
-    let parsedData = {};
+    let parsedData: any = {};
     try {
       parsedData = JSON.parse(text);
     } catch (e) {
       console.warn('Falha no JSON parse do Gemini:', text);
-      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0]);
       }
+    }
+
+    // Force strict exercise count limit
+    const limit = clientData.exercisesPerSession || 6;
+    if (parsedData && Array.isArray(parsedData.days)) {
+      parsedData.days = parsedData.days.map((day: any) => {
+        if (day && Array.isArray(day.exercises) && day.exercises.length > limit) {
+          day.exercises = day.exercises.slice(0, limit);
+        }
+        return day;
+      });
     }
 
     res.json({

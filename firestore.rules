@@ -74,7 +74,7 @@ service cloud.firestore {
         && isValidId(clientId)
         && isValidClient(incoming())
         && incoming().trainerId == request.auth.uid
-        && incoming().keys().hasOnly(['id', 'trainerId', 'name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings']);
+        && incoming().keys().hasOnly(['id', 'trainerId', 'name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'exercisesPerSession', 'programWeeks', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings']);
 
       allow update: if isSignedIn() 
         && isValidId(clientId)
@@ -84,7 +84,7 @@ service cloud.firestore {
         && (
           (
             existing().trainerId == request.auth.uid
-            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings'])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'whats', 'birth', 'gender', 'tipo', 'height', 'weight', 'goal', 'level', 'days', 'dur', 'eq', 'experience', 'parq', 'diseases', 'meds', 'inj', 'notes', 'exercisesPerSession', 'programWeeks', 'portal', 'program', 'programHistory', 'rpeLog', 'trainerChat', 'agenda', 'updatedAt', 'bodyCompositionHistory', 'reminderSchedule', 'classBookings'])
           )
           ||
           (

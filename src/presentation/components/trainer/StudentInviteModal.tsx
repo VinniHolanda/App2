@@ -25,7 +25,6 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
   // Generate direct link using current origin
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const inviteLink = `${baseUrl}/?studentId=${client.id}`;
-  const studentPass = client.portal?.pass || '123456';
   const studentEmail = client.email || client.portal?.email || `${client.name.toLowerCase().replace(/\s+/g, '.')}@fitconnect.com`;
 
   const handleCopyLink = () => {
@@ -38,7 +37,7 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
     `Olá ${client.name.split(' ')[0]}! 👋\n\n` +
     `Seu treino de *${client.goal}* no *${brand.studioName || 'Kinetix Studio'}* já está liberado na sua ficha digital!\n\n` +
     `📲 *Link de Acesso Direto:*\n${inviteLink}\n\n` +
-    `🔑 *Dados do Portal:*\nE-mail: ${studentEmail}\nSenha: ${studentPass}\n\n` +
+    `Clique no link, depois toque em 'Sou Aluno' e crie sua conta com e-mail e senha (ou entre com Google).\n\n` +
     `Você pode abrir direto no celular e registrar suas cargas, RPE e áudios mesmo sem internet no salão de musculação! 💪`
   );
 
@@ -109,27 +108,7 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
           </div>
         </div>
 
-        {/* Credentials & PIN Card */}
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-[#f1f5f9] flex items-center gap-1.5">
-              <Key className="w-4 h-4 text-amber-400" />
-              Credenciais de Acesso do Aluno
-            </span>
-            <Badge variant="accent">Pronto para Uso</Badge>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="bg-[#080b11] p-3 rounded-xl border border-[#1e293b]">
-              <span className="text-[10px] text-[#64748b] block font-bold uppercase">E-mail Cadastrado</span>
-              <span className="font-mono text-[#f1f5f9] font-bold truncate block mt-0.5">{studentEmail}</span>
-            </div>
-            <div className="bg-[#080b11] p-3 rounded-xl border border-[#1e293b]">
-              <span className="text-[10px] text-[#64748b] block font-bold uppercase">Senha Padrão / PIN</span>
-              <span className="font-mono text-[#00f0ff] font-extrabold text-sm block mt-0.5">{studentPass}</span>
-            </div>
-          </div>
-        </div>
+        {/* Credentials Card Removed */}
 
         {/* Actions Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">

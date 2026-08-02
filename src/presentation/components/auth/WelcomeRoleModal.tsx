@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Badge } from '../ui/Primitives';
 import { useBrand } from '../../context/BrandContext';
 import { 

@@ -185,7 +185,9 @@ export function useTrainerViewModel() {
             name: client.name,
             level: client.level,
             goal: client.goal,
-            daysPerWeek: parseInt(client.days) || 4,
+            daysPerWeek: typeof client.days === 'string' ? parseInt(client.days) : (client.days || 4),
+            exercisesPerSession: client.exercisesPerSession || 6,
+            programWeeks: client.programWeeks || 4,
             injuries: client.injuries || (client.inj ? [client.inj] : []),
             equipment: [client.eq]
           },

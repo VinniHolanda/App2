@@ -250,6 +250,8 @@ export interface Client {
   sleep?: string;
   inj?: string;
   notes?: string;
+  exercisesPerSession?: number;
+  programWeeks?: number;
   program?: Program | null;
   programHistory?: ProgramHistoryItem[];
   rpeLog?: Session[];
