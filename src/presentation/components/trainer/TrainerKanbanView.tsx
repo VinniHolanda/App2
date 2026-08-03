@@ -103,17 +103,20 @@ export const TrainerKanbanView: React.FC<TrainerKanbanViewProps> = ({ clients, o
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    let updates: Partial<Client> = { ...client };
+    let updates: Partial<any> = { ...client };
 
     if (destCol === 'consultoria') {
       updates.tipo = 'Consultoria online';
+      onUpdateClient(updates);
     } else if (destCol === 'sem_treino') {
-      updates.program = null;
+      if (window.confirm("Isso vai remover o programa de treino ativo deste aluno. Confirma?")) {
+        updates.program = null;
+        onUpdateClient(updates);
+      }
     } else if (destCol === 'ativo' || destCol === 'sem_registro') {
-      updates.tipo = 'Presencial';
+      // Apenas informativas, sem side-effect de escrita
+      return;
     }
-
-    onUpdateClient(updates);
   };
 
   return (

@@ -224,6 +224,27 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     </div>
                   </div>
                 ))}
+                
+                {isEditMode && (
+                  <div className="mt-4 text-center pb-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        const p = JSON.parse(JSON.stringify(editedProgram));
+                        p.days.push({
+                          id: crypto.randomUUID(),
+                          name: `Dia ${p.days.length + 1}`,
+                          focus: "Geral",
+                          exercises: []
+                        });
+                        setEditedProgram(p);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Adicionar Dia
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-xs text-[#64748b] py-3 text-center">Sem recordes registrados ainda.</p>
@@ -514,7 +535,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                   </div>
                 </div>
 
-                {(client.program.days || []).map((day, di) => (
+                {((isEditMode && editedProgram ? editedProgram.days : client.program.days) || []).map((day, di) => (
                   <motion.div
                     key={di}
                     initial={{ opacity: 0, y: 15 }}
@@ -523,10 +544,49 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-5 space-y-3 hover:border-[#1e293b] transition-colors"
                   >
                     <div className="flex justify-between items-center pb-2 border-b border-[#1e293b]">
-                      <div>
-                        <h4 className="font-bold text-base text-[#f1f5f9]">{day.name}</h4>
-                        <div className="text-xs text-[#64748b] font-medium">{day.focus}</div>
-                      </div>
+                      {isEditMode ? (
+                        <div className="flex flex-col gap-1 w-1/2">
+                          <input 
+                            type="text" 
+                            value={day.name} 
+                            onChange={e => {
+                              const p = JSON.parse(JSON.stringify(editedProgram));
+                              p.days[di].name = e.target.value;
+                              setEditedProgram(p);
+                            }}
+                            className="font-bold text-base text-[#f1f5f9] bg-[#020817] border border-[#1e293b] rounded px-2 py-1"
+                          />
+                          <input 
+                            type="text" 
+                            value={day.focus} 
+                            onChange={e => {
+                              const p = JSON.parse(JSON.stringify(editedProgram));
+                              p.days[di].focus = e.target.value;
+                              setEditedProgram(p);
+                            }}
+                            className="text-xs text-[#94a3b8] font-medium bg-[#020817] border border-[#1e293b] rounded px-2 py-1"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <h4 className="font-bold text-base text-[#f1f5f9]">{day.name}</h4>
+                          <div className="text-xs text-[#64748b] font-medium">{day.focus}</div>
+                        </div>
+                      )}
+                      {isEditMode && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const p = JSON.parse(JSON.stringify(editedProgram));
+                            p.days.splice(di, 1);
+                            setEditedProgram(p);
+                          }}
+                          className="text-rose-400 hover:text-rose-300 p-2 rounded-lg hover:bg-rose-500/10 transition-colors"
+                          title="Remover Dia"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="overflow-x-auto">
@@ -540,46 +600,161 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                             <th className="py-2 px-2 text-center">Descanso</th>
                             <th className="py-2 px-2 text-center">RPE</th>
                             <th className="py-2 px-2 text-center">Método</th>
-                            <th className="py-2 px-2 text-right">IA Substituição</th>
+                            <th className="py-2 px-2 text-right">{isEditMode ? 'Ações' : 'IA Substituição'}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(day.exercises || []).map((ex, ei) => (
                             <tr key={ei} className="border-b border-[#1e293b]/50 hover:bg-[#0f172a] transition-colors">
-                              <td className="py-2.5 px-2 font-bold text-[#f1f5f9]">
-                                {ex.name}
-                                {ex.notes && (
-                                  <div className="text-[10px] font-normal text-emerald-400 mt-0.5">{ex.notes}</div>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-2 text-[#94a3b8]">{MOVEMENT_PATTERN_LABELS[ex.pat as keyof typeof MOVEMENT_PATTERN_LABELS] || ex.pat}</td>
-                              <td className="py-2.5 px-2 text-center font-mono font-bold text-[#00f0ff]">{ex.sets}</td>
-                              <td className="py-2.5 px-2 text-center font-mono text-[#f1f5f9]">{ex.reps}</td>
-                              <td className="py-2.5 px-2 text-center text-[#94a3b8]">{ex.rest}</td>
-                              <td className="py-2.5 px-2 text-center font-mono text-[#94a3b8]">RPE {ex.rpe}</td>
-                              <td className="py-2.5 px-2 text-center">
-                                <TrainingMethodBadge 
-                                  methodKeyOrName={ex.method || 'tradicional'} 
-                                  clientLevel={client.level}
-                                  periodizationPhase={client.program?.meso?.weeks?.[0]?.f || 'Base'}
-                                  goal={client.goal}
-                                />
-                              </td>
-                              <td className="py-2.5 px-2 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => setAiSubModal({ isOpen: true, dayIndex: di, exerciseIndex: ei, exercise: ex })}
-                                  className="text-[10px] font-bold text-[#00f0ff] hover:bg-[#00f0ff]/10 border border-[#00f0ff]/30 px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer"
-                                  title="IA Assistente de Substituição Biomecânica"
-                                >
-                                  <Sparkles className="w-3 h-3 text-[#00f0ff]" />
-                                  <span>IA Substituir</span>
-                                </button>
-                              </td>
+                              {isEditMode ? (
+                                <>
+                                  <td className="py-2.5 px-2 font-bold text-[#f1f5f9]">
+                                    <input 
+                                      type="text"
+                                      value={ex.name}
+                                      onChange={e => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises[ei].name = e.target.value;
+                                        setEditedProgram(p);
+                                      }}
+                                      className="w-full bg-[#020817] border border-[#1e293b] rounded p-1 text-xs text-[#f1f5f9]"
+                                    />
+                                    {ex.notes && <div className="text-[10px] font-normal text-emerald-400 mt-0.5">{ex.notes}</div>}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-[#94a3b8]">{MOVEMENT_PATTERN_LABELS[ex.pat as keyof typeof MOVEMENT_PATTERN_LABELS] || ex.pat}</td>
+                                  <td className="py-2.5 px-2 text-center font-mono font-bold text-[#00f0ff]">
+                                    <input 
+                                      type="number"
+                                      value={ex.sets}
+                                      onChange={e => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises[ei].sets = Number(e.target.value) || 0;
+                                        setEditedProgram(p);
+                                      }}
+                                      className="w-12 bg-[#020817] border border-[#1e293b] rounded p-1 text-xs text-center mx-auto text-[#f1f5f9]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-[#f1f5f9]">
+                                    <input 
+                                      type="text"
+                                      value={ex.reps}
+                                      onChange={e => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises[ei].reps = e.target.value;
+                                        setEditedProgram(p);
+                                      }}
+                                      className="w-16 bg-[#020817] border border-[#1e293b] rounded p-1 text-xs text-center mx-auto text-[#f1f5f9]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center text-[#94a3b8]">
+                                    <input 
+                                      type="text"
+                                      value={ex.rest}
+                                      onChange={e => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises[ei].rest = e.target.value;
+                                        setEditedProgram(p);
+                                      }}
+                                      className="w-16 bg-[#020817] border border-[#1e293b] rounded p-1 text-xs text-center mx-auto text-[#f1f5f9]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-[#94a3b8]">
+                                    <input 
+                                      type="number"
+                                      value={ex.rpe}
+                                      onChange={e => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises[ei].rpe = Number(e.target.value) || 0;
+                                        setEditedProgram(p);
+                                      }}
+                                      className="w-12 bg-[#020817] border border-[#1e293b] rounded p-1 text-xs text-center mx-auto text-[#f1f5f9]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center">
+                                    <TrainingMethodBadge 
+                                       methodKeyOrName={ex.method || 'tradicional'} 
+                                       clientLevel={client.level}
+                                      periodizationPhase={client.program?.meso?.weeks?.[0]?.f || 'Base'}
+                                      goal={client.goal}
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const p = JSON.parse(JSON.stringify(editedProgram));
+                                        p.days[di].exercises.splice(ei, 1);
+                                        setEditedProgram(p);
+                                      }}
+                                      className="text-rose-400 hover:text-rose-300 p-1"
+                                      title="Remover Exercício"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-2.5 px-2 font-bold text-[#f1f5f9]">
+                                    {ex.name}
+                                    {ex.notes && (
+                                      <div className="text-[10px] font-normal text-emerald-400 mt-0.5">{ex.notes}</div>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-[#94a3b8]">{MOVEMENT_PATTERN_LABELS[ex.pat as keyof typeof MOVEMENT_PATTERN_LABELS] || ex.pat}</td>
+                                  <td className="py-2.5 px-2 text-center font-mono font-bold text-[#00f0ff]">{ex.sets}</td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-[#f1f5f9]">{ex.reps}</td>
+                                  <td className="py-2.5 px-2 text-center text-[#94a3b8]">{ex.rest}</td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-[#94a3b8]">RPE {ex.rpe}</td>
+                                  <td className="py-2.5 px-2 text-center">
+                                    <TrainingMethodBadge 
+                                       methodKeyOrName={ex.method || 'tradicional'} 
+                                       clientLevel={client.level}
+                                      periodizationPhase={client.program?.meso?.weeks?.[0]?.f || 'Base'}
+                                      goal={client.goal}
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => setAiSubModal({ isOpen: true, dayIndex: di, exerciseIndex: ei, exercise: ex })}
+                                      className="text-[10px] font-bold text-[#00f0ff] hover:bg-[#00f0ff]/10 border border-[#00f0ff]/30 px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer"
+                                      title="IA Assistente de Substituição Biomecânica"
+                                    >
+                                      <Sparkles className="w-3 h-3 text-[#00f0ff]" />
+                                      <span>IA Substituir</span>
+                                    </button>
+                                  </td>
+                                </>
+                              )}
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      {isEditMode && (
+                        <div className="mt-4 pb-2 text-center">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              const p = JSON.parse(JSON.stringify(editedProgram));
+                              p.days[di].exercises.push({
+                                id: crypto.randomUUID(),
+                                name: "Novo Exercício",
+                                pat: "core",
+                                sets: 3,
+                                reps: "10-12",
+                                rest: "60s",
+                                rpe: 8,
+                                method: "tradicional"
+                              });
+                              setEditedProgram(p);
+                            }}
+                          >
+                            <Plus className="w-3 h-3 mr-1" /> Adicionar Exercício
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -1371,12 +1546,19 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         isOpen={showTemplateLibrary}
         onClose={() => setShowTemplateLibrary(false)}
         onApplyTemplate={(template) => {
-          if (!client.program) return;
           const updatedClient = { ...client };
-          updatedClient.program = {
-            ...updatedClient.program,
-            days: JSON.parse(JSON.stringify(template.days))
-          };
+          if (!updatedClient.program) {
+            updatedClient.program = {
+              summary: 'Programa aplicado a partir de template.',
+              principles: [],
+              days: JSON.parse(JSON.stringify(template.days))
+            };
+          } else {
+            updatedClient.program = {
+              ...updatedClient.program,
+              days: JSON.parse(JSON.stringify(template.days))
+            };
+          }
           if (onSaveClient) {
             onSaveClient(updatedClient);
           }
