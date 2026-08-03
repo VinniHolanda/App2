@@ -225,26 +225,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                   </div>
                 ))}
                 
-                {isEditMode && (
-                  <div className="mt-4 text-center pb-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => {
-                        const p = JSON.parse(JSON.stringify(editedProgram));
-                        p.days.push({
-                          id: crypto.randomUUID(),
-                          name: `Dia ${p.days.length + 1}`,
-                          focus: "Geral",
-                          exercises: []
-                        });
-                        setEditedProgram(p);
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Adicionar Dia
-                    </Button>
-                  </div>
-                )}
+                
               </div>
             ) : (
               <p className="text-xs text-[#64748b] py-3 text-center">Sem recordes registrados ainda.</p>
@@ -758,6 +739,27 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     </div>
                   </motion.div>
                 ))}
+                
+                {isEditMode && (
+                  <div className="mt-4 text-center pb-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        const p = JSON.parse(JSON.stringify(editedProgram));
+                        p.days.push({
+                          id: crypto.randomUUID(),
+                          name: `Dia ${p.days.length + 1}`,
+                          focus: "Geral",
+                          exercises: []
+                        });
+                        setEditedProgram(p);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Adicionar Dia
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-[#0f172a] border border-dashed border-[#1e293b] rounded-2xl p-8 text-center text-[#64748b]">
