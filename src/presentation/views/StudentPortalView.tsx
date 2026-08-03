@@ -19,6 +19,8 @@ import {
 import { WeeklySchedulerWidget } from '../components/student/WeeklySchedulerWidget';
 import { StudentPerformanceDashboard } from '../components/student/StudentPerformanceDashboard';
 import { StudentBadgesWidget } from '../components/student/StudentBadgesWidget';
+import { WeeklyComparisonChart } from '../components/student/WeeklyComparisonChart';
+import { PersonalRecordsPanel } from '../components/student/PersonalRecordsPanel';
 import { PersistentRestTimerOverlay } from '../components/student/PersistentRestTimerOverlay';
 import { OfflineStatusIndicator } from '../components/student/OfflineStatusIndicator';
 import { StudentRecoveryCheckinWidget } from '../components/student/StudentRecoveryCheckinWidget';
@@ -796,7 +798,14 @@ const StudentPortalActiveContent: React.FC<{
             />
 
             {/* Badges and Medals System */}
-            <StudentBadgesWidget client={vm.client} />
+            <div className="space-y-6">
+              <StudentBadgesWidget client={vm.client} />
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <WeeklyComparisonChart sessions={vm.client.rpeLog || []} />
+                <PersonalRecordsPanel sessions={vm.client.rpeLog || []} />
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -810,7 +819,14 @@ const StudentPortalActiveContent: React.FC<{
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            <StudentBadgesWidget client={vm.client} />
+            <div className="space-y-6">
+              <StudentBadgesWidget client={vm.client} />
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <WeeklyComparisonChart sessions={vm.client.rpeLog || []} />
+                <PersonalRecordsPanel sessions={vm.client.rpeLog || []} />
+              </div>
+            </div>
           </motion.div>
         )}
 

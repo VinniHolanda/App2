@@ -25,7 +25,9 @@ import { ProgramExercise } from '../../domain/types';
 import { calculateWeekStats, calculatePersonalRecords } from '../../domain/calculators/loadCalculators';
 import { calculateStudentClassStats } from '../../domain/calculators/classStatsCalculator';
 import { MOVEMENT_PATTERN_LABELS } from '../../data/exerciseCatalog';
-import { Maximize2, Minimize2, Target, Sparkles, Activity, X, Calendar, List, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Clock, Plus, Trash2, Check, Share2 } from 'lucide-react';
+import { Maximize2, Minimize2, Target, Sparkles, Activity, X, Calendar, List, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Clock, Plus, Trash2, Check, Share2, Edit2, Save, Library } from 'lucide-react';
+import { TemplateLibraryModal } from '../components/trainer/TemplateLibraryModal';
+import { templateRepository } from '../../data/repositories/TemplateRepository';
 
 export interface ClientDetailViewProps {
   client: Client;
@@ -75,6 +77,15 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [trainerMsg, setTrainerMsg] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [treinoSubTab, setTreinoSubTab] = useState<'lista' | 'calendario'>('lista');
+
+  // Inline Quick Editor State
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedProgram, setEditedProgram] = useState<Program | null>(null);
+
+  // Templates State
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
 
   // AI Exercise Substitution Assistant Modal State
   const [aiSubModal, setAiSubModal] = useState<{
@@ -154,6 +165,15 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTemplateLibrary(true)}
+              className="border-[#1e293b] text-[#f1f5f9] hover:bg-[#1e293b] text-xs font-bold flex items-center gap-1.5"
+            >
+              <Library className="w-3.5 h-3.5" />
+              Templates
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -456,6 +476,34 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             {/* Program Days Display */}
             {client.program ? (
               <div className="space-y-4">
+                <div className="flex flex-wrap justify-between items-center bg-[#0f172a] border border-[#1e293b] rounded-2xl p-4 gap-4">
+                  <h3 className="font-display font-bold text-base text-[#f1f5f9]">Rotina de Treinos</h3>
+                  <div className="flex items-center gap-2">
+                    {isEditMode ? (
+                      <Button size="sm" variant="primary" onClick={() => {
+                        if (onSaveClient && editedProgram) {
+                          onSaveClient({ ...client, program: editedProgram });
+                        }
+                        setIsEditMode(false);
+                      }}>
+                        <Check className="w-4 h-4 mr-1" /> Concluir edição
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setShowSaveTemplateModal(true)} className="border-[#1e293b] text-[#f1f5f9] hover:bg-[#1e293b]">
+                          <Save className="w-4 h-4 mr-1" /> Salvar como template
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setEditedProgram(JSON.parse(JSON.stringify(client.program)));
+                          setIsEditMode(true);
+                        }} className="border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/10">
+                          <Edit2 className="w-4 h-4 mr-1" /> Editar treino
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 <div className="bg-[#0f172a] border border-[#1e293b] rounded-2xl p-5 space-y-2">
                   <h4 className="font-display font-bold text-sm text-[#00f0ff]">Racional da Prescrição</h4>
                   <p className="text-sm text-[#f1f5f9] leading-relaxed">{client.program.summary}</p>
@@ -1318,6 +1366,71 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         onClose={() => setShowInviteModal(false)}
         client={client}
       />
+
+      <TemplateLibraryModal
+        isOpen={showTemplateLibrary}
+        onClose={() => setShowTemplateLibrary(false)}
+        onApplyTemplate={(template) => {
+          if (!client.program) return;
+          const updatedClient = { ...client };
+          updatedClient.program = {
+            ...updatedClient.program,
+            days: JSON.parse(JSON.stringify(template.days))
+          };
+          if (onSaveClient) {
+            onSaveClient(updatedClient);
+          }
+        }}
+      />
+
+      <Modal
+        isOpen={showSaveTemplateModal}
+        onClose={() => {
+          setShowSaveTemplateModal(false);
+          setNewTemplateName('');
+        }}
+        title="Salvar como Template"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#94a3b8]">
+            Dê um nome para este template. Ele será salvo na sua biblioteca para uso futuro.
+          </p>
+          <input
+            type="text"
+            value={newTemplateName}
+            onChange={(e) => setNewTemplateName(e.target.value)}
+            placeholder="Ex: Hipertrofia Avançado 4x"
+            className="w-full bg-[#020817] border border-[#1e293b] rounded-xl px-4 py-2 text-[#f1f5f9] focus:outline-none focus:border-[#00f0ff]"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowSaveTemplateModal(false)}>Cancelar</Button>
+            <Button
+              variant="primary"
+              disabled={!newTemplateName.trim()}
+              onClick={async () => {
+                if (client.program) {
+                  const newTemplate = {
+                    id: crypto.randomUUID(),
+                    trainerId: '', // vai ser preenchido no repository
+                    name: newTemplateName.trim(),
+                    goal: client.goal,
+                    level: client.level,
+                    createdAt: null,
+                    days: JSON.parse(JSON.stringify(client.program.days)),
+                    sourceNote: `Originado de ${client.name}`
+                  };
+                  await templateRepository.saveTemplate(newTemplate);
+                }
+                setShowSaveTemplateModal(false);
+                setNewTemplateName('');
+              }}
+            >
+              Salvar Template
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   );
 };

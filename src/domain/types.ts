@@ -299,3 +299,14 @@ export interface PersonalRecord {
   bestKg: number;
   date: string;
 }
+
+export interface WorkoutTemplate {
+  id: string;
+  trainerId: string;
+  name: string;
+  goal: TrainingGoal;
+  level: ClientLevel;
+  createdAt: any;
+  days: ProgramDay[];
+  sourceNote?: string;
+}

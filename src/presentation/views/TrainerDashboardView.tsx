@@ -4,9 +4,10 @@ import { Client, ClientLevel, TrainingGoal } from '../../domain/types';
 import { ClientCard, AddClientModal } from '../components/trainer/TrainerComponents';
 import { TrainerAlertsNotificationCenter } from '../components/trainer/TrainerAlertsNotificationCenter';
 import { WeeklyVolumeHeatmapWidget } from '../components/trainer/WeeklyVolumeHeatmapWidget';
+import { TrainerKanbanView } from '../components/trainer/TrainerKanbanView';
 import { OvertrainingMonitoringService } from '../../domain/services/OvertrainingMonitoringService';
 import { Button, Badge } from '../components/ui/Primitives';
-import { Search, Filter, X, ArrowUpDown, SlidersHorizontal, UserCheck, AlertTriangle, AlertOctagon, RefreshCw, Activity, Sparkles, Dumbbell, Zap, Command, BookOpen, ShieldAlert } from 'lucide-react';
+import { Search, Filter, X, ArrowUpDown, SlidersHorizontal, UserCheck, AlertTriangle, AlertOctagon, RefreshCw, Activity, Sparkles, Dumbbell, Zap, Command, BookOpen, ShieldAlert, LayoutGrid, KanbanSquare } from 'lucide-react';
 
 export interface TrainerDashboardViewProps {
   clients: Client[];
@@ -54,6 +55,7 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
   const [selectedTipo, setSelectedTipo] = useState<string>('todos');
   const [sortBy, setSortBy] = useState<'last_updated' | 'name' | 'level'>('last_updated');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista');
 
   const goalsList: TrainingGoal[] = [
     'Ganho de massa (hipertrofia)',
@@ -327,41 +329,60 @@ export const TrainerDashboardView: React.FC<TrainerDashboardViewProps> = ({
 
 
       {/* Results Header */}
-      <div className="flex items-center justify-between text-xs text-[#94a3b8] px-1">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="text-xs text-[#94a3b8] px-1">
           Exibindo <strong className="text-[#f1f5f9] font-bold">{filteredAndSortedClients.length}</strong> de <strong className="text-[#f1f5f9] font-bold">{clients.length}</strong> alunos
           {hasActiveFilters && <span className="text-[#00f0ff] ml-1.5 font-medium">(filtros ativos)</span>}
+          <span className="ml-3 text-[11px] text-[#64748b]">
+            Ordenado por: {sortBy === 'last_updated' ? 'Última Atividade' : sortBy === 'name' ? 'Nome' : 'Nível'}
+          </span>
         </div>
-        <div className="text-[11px] text-[#64748b]">
-          Ordenado por: {sortBy === 'last_updated' ? 'Última Atividade' : sortBy === 'name' ? 'Nome' : 'Nível'}
+        
+        <div className="flex items-center bg-[#080b11] border border-[#1e293b] rounded-lg p-1 shrink-0">
+          <button
+            onClick={() => setViewMode('lista')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'lista' ? 'bg-[#00f0ff] text-[#080b11] shadow-sm' : 'text-[#94a3b8] hover:text-[#f1f5f9]'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Lista
+          </button>
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'kanban' ? 'bg-[#00f0ff] text-[#080b11] shadow-sm' : 'text-[#94a3b8] hover:text-[#f1f5f9]'}`}
+          >
+            <KanbanSquare className="w-3.5 h-3.5" /> Kanban
+          </button>
         </div>
       </div>
 
       {/* Clients Grid */}
       {filteredAndSortedClients.length > 0 ? (
-        <motion.div 
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <AnimatePresence mode="popLayout">
-            {filteredAndSortedClients.map((client, index) => (
-              <motion.div
-                key={client.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                transition={{ duration: 0.22, delay: index * 0.04 }}
-              >
-                <ClientCard
-                  client={client}
-                  onClick={() => onSelectClient(client.id)}
-                  onDeleteClient={onDeleteClient}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        viewMode === 'kanban' ? (
+          <TrainerKanbanView clients={filteredAndSortedClients} onSelectClient={onSelectClient} onUpdateClient={onSaveClient} />
+        ) : (
+          <motion.div 
+            layout
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredAndSortedClients.map((client, index) => (
+                <motion.div
+                  key={client.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.22, delay: index * 0.04 }}
+                >
+                  <ClientCard
+                    client={client}
+                    onClick={() => onSelectClient(client.id)}
+                    onDeleteClient={onDeleteClient}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )
       ) : (
         <div className="bg-[#0f172a] border border-dashed border-[#1e293b] rounded-2xl p-12 text-center text-[#64748b] space-y-3">
           <div className="text-4xl">🔍</div>
